@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { clientEnv } from '@/env/client';
 
 interface PriceCache {
@@ -155,45 +154,4 @@ export function formatUSD(value: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
-}
-
-// React hook for live price updates
-export function useBitcoinPrice(updateInterval = clientEnv.NEXT_PUBLIC_PRICE_UPDATE_INTERVAL) {
-  const [price, setPrice] = useState<number | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const updatePrice = async () => {
-      try {
-        const newPrice = await getBitcoinPrice(false) as number;
-        if (mounted) {
-          setPrice(newPrice);
-          setLastUpdated(new Date());
-          setError(null);
-        }
-      } catch (err) {
-        if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to fetch price');
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    updatePrice();
-    const interval = setInterval(updatePrice, updateInterval);
-
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, [updateInterval]);
-
-  return { price, lastUpdated, loading, error };
 } 

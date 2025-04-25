@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -15,89 +14,7 @@ import { Spinner } from "@/components/Spinner";
 import { useDialog } from "@/components/DialogManager";
 import useSWR from "swr";
 import { type Transaction } from "@/lib/types";
-
-const transactionFormSchema = z.object({
-  type: z.enum(["buy", "sell"]),
-  amount: z.number().positive(),
-  price: z.number().positive(),
-  notes: z.string().optional(),
-});
-
-type TransactionFormData = z.infer<typeof transactionFormSchema>;
-
-function AddTransactionForm({ onSuccess }: { onSuccess: () => void }) {
-  const form = useForm<TransactionFormData>({
-    resolver: zodResolver(transactionFormSchema),
-    defaultValues: {
-      type: "buy",
-    },
-  });
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const onSubmit = async (data: TransactionFormData) => {
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("/api/transactions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create transaction");
-      }
-
-      onSuccess();
-    } catch (error) {
-      console.error("Error creating transaction:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-      <FormFieldSegmentedControl
-        name="type"
-        options={[
-          { value: "buy", label: "Buy" },
-          { value: "sell", label: "Sell" },
-        ]}
-      />
-      
-      <FormFieldInput
-        name="amount"
-        label="Amount (BTC)"
-        type="number"
-        placeholder="0.00"
-      />
-
-      <FormFieldInput
-        name="price"
-        label="Price (USD)"
-        type="number"
-        placeholder="0.00"
-      />
-
-      <FormFieldTextarea
-        name="notes"
-        label="Notes"
-        placeholder="Add any notes about this transaction..."
-      />
-
-      <CustomButton
-        type="submit"
-        loading={isSubmitting}
-        leftIcon={Plus}
-      >
-        Add Transaction
-      </CustomButton>
-    </form>
-  );
-}
+import { AddTransactionForm } from "@/components/dashboard/AddTransactionForm";
 
 function TransactionList() {
   const { data: transactions, error, mutate } = useSWR<Transaction[]>("/api/transactions");

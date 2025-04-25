@@ -1,10 +1,4 @@
-interface Transaction {
-  id: string;
-  type: 'buy' | 'sell';
-  amount: number;
-  price: number;
-  timestamp: number;
-}
+import type { Transaction } from "@/lib/types";
 
 interface Lot {
   id: string;
@@ -21,8 +15,11 @@ interface PortfolioSummary {
   percentageReturn?: number;
 }
 
-export function calculatePortfolioSummary(transactions: Transaction[], currentPrice: number | null): PortfolioSummary {
-  if (!transactions?.length) {
+export function calculatePortfolioSummary(transactions: Transaction[] = [], currentPrice: number | null): PortfolioSummary {
+  // Explicitly check if transactions is an array
+  if (!Array.isArray(transactions)) {
+    console.error("calculatePortfolioSummary received non-array:", transactions);
+    // Return a default summary if it's not an array somehow
     return {
       totalBTC: 0,
       costBasis: 0,
@@ -32,8 +29,8 @@ export function calculatePortfolioSummary(transactions: Transaction[], currentPr
     };
   }
 
-  // Sort transactions by date
-  const sortedTransactions = [...transactions].sort((a, b) => a.timestamp - b.timestamp);
+  // Now it's safe to spread
+  const sortedTransactions = [...transactions].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   
   // Track lots for cost basis
   let lots: Lot[] = [];
@@ -84,15 +81,15 @@ export function calculatePortfolioSummary(transactions: Transaction[], currentPr
   };
 }
 
-export function getRecentTransactions(transactions: Transaction[], limit = 3): Transaction[] {
+export function getRecentTransactions(transactions: Transaction[] = [], limit = 3): Transaction[] {
   return [...transactions]
-    .sort((a, b) => b.timestamp - a.timestamp)
+    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
     .slice(0, limit);
 }
 
 // Helper function to calculate realized gains/losses
-export function calculateRealizedGains(transactions: Transaction[]): number {
-  const sortedTransactions = [...transactions].sort((a, b) => a.timestamp - b.timestamp);
+export function calculateRealizedGains(transactions: Transaction[] = []): number {
+  const sortedTransactions = [...transactions].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   let lots: Lot[] = [];
   let lotCounter = 1;
   let realizedGains = 0;

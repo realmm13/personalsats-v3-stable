@@ -144,7 +144,7 @@ export const SimpleDialog = ({
     <div className={cn("flex justify-end gap-2 pt-4", classNames.footer)}>
       {showCancel && (
         <CustomButton
-          variant="outline"
+          variant="filled"
           onClick={handleCancel}
           className={classNames.cancelButton}
         >
@@ -155,6 +155,7 @@ export const SimpleDialog = ({
         <CustomButton
           onClick={handleSubmit}
           className={classNames.submitButton}
+          variant="filled"
         >
           {submitText}
         </CustomButton>
@@ -215,7 +216,7 @@ export const SimpleDialog = ({
           <DialogFooter className={classNames.footer}>
             {showCancel && (
               <CustomButton
-                variant="outline"
+                variant="filled"
                 onClick={handleCancel}
                 className={classNames.cancelButton}
               >
@@ -226,6 +227,7 @@ export const SimpleDialog = ({
               <CustomButton
                 onClick={handleSubmit}
                 className={classNames.submitButton}
+                variant="filled"
               >
                 {submitText}
               </CustomButton>

@@ -19,8 +19,7 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "content-collections": ["./.content-collections/generated"]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
@@ -30,8 +29,7 @@
     "**/*.tsx",
     "**/*.cjs",
     "**/*.js",
-    ".next/types/**/*.ts",
-    ".content-collections/generated"
+    ".next/types/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

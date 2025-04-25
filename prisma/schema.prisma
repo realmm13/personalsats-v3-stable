@@ -123,7 +123,10 @@ model BitcoinTransaction {
   type      String   // 'buy' or 'sell'
   amount    Float
   price     Float
+  fee       Float?   @default(0)
   timestamp DateTime @default(now())
+  wallet    String
+  tags      String[] @default([])
   notes     String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

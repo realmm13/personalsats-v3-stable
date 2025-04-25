@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { /* useEffect, useState */ } from 'react';
+import { useRouter } from 'next/navigation';
+import { useDialog } from '@/components/DialogManager';
+import useSWR from 'swr';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,34 +17,34 @@ import {
   BarChart3,
 } from "lucide-react";
 
-import { useBitcoinPrice, formatUSD } from '@/lib/price';
+import { useBitcoinPrice } from '@/hooks/useBitcoinPrice';
+import { formatUSD } from '@/lib/price';
 import { calculatePortfolioSummary, getRecentTransactions } from '@/lib/portfolio';
 import type { Transaction, PortfolioSummary } from '@/lib/types';
+import { Spinner } from "@/components/Spinner";
+
+import { AddTransactionForm } from '@/components/dashboard/AddTransactionForm';
 
 export function DashboardClient() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { price: bitcoinPrice, lastUpdated, loading: priceLoading } = useBitcoinPrice();
+  const router = useRouter();
+  const { openDialog } = useDialog();
+  const { data: transactions, error: transactionsError, isLoading: transactionsLoading, mutate: mutateTransactions } = 
+    useSWR<Transaction[]>('/api/transactions', fetcher);
   
-  useEffect(() => {
-    // Fetch transactions from your API
-    const fetchTransactions = async () => {
-      try {
-        const response = await fetch('/api/transactions');
-        if (response.ok) {
-          const data = await response.json();
-          setTransactions(data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch transactions:', error);
-      }
-    };
-    
-    fetchTransactions();
-  }, []);
+  if (transactionsLoading || priceLoading) {
+    return <div className="flex justify-center items-center h-64"><Spinner size="lg" /></div>;
+  }
 
-  const portfolio = calculatePortfolioSummary(transactions, bitcoinPrice);
+  if (transactionsError) {
+    return <div className="text-center text-red-500">Failed to load transaction data.</div>;
+  }
 
-  // Ensure portfolio values are numbers or default to 0
+  // Ensure currentTransactions is strictly an array
+  const currentTransactions = Array.isArray(transactions) ? transactions : [];
+
+  const portfolio = calculatePortfolioSummary(currentTransactions, bitcoinPrice);
+
   const safePortfolio: PortfolioSummary = {
     totalBTC: portfolio.totalBTC,
     costBasis: portfolio.costBasis,
@@ -50,14 +53,28 @@ export function DashboardClient() {
     percentageReturn: portfolio.percentageReturn ?? 0
   };
 
-  const recentTransactions = getRecentTransactions(transactions);
+  const recentTransactions = getRecentTransactions(currentTransactions);
 
-  // Helper function to safely check percentage values
+  const handleAddTransaction = () => {
+    openDialog({
+      title: "Add Transaction",
+      component: AddTransactionForm,
+      props: {
+        onSuccess: () => {
+          mutateTransactions();
+        },
+      },
+    });
+  };
+
+  const handleViewAllTransactions = () => {
+    router.push('/transactions');
+  };
+
   const shouldShowPercentage = (value: number) => value !== 0;
 
   return (
     <div className="vertical space-y-8">
-      {/* Stats Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="p-6">
           <div className="flex items-center justify-between space-y-2">
@@ -135,18 +152,16 @@ export function DashboardClient() {
         </Card>
       </div>
 
-      {/* Main Content */}
       <div className="grid gap-4 md:grid-cols-7">
-        {/* Activity Feed */}
         <Card className="col-span-4 p-6">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-xl font-semibold">Recent Transactions</h2>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleViewAllTransactions}>
               View All
             </Button>
           </div>
           <div className="space-y-4">
-            {recentTransactions.length === 0 ? (
+            {currentTransactions.length === 0 ? (
               <div className="text-muted-foreground text-center py-4">
                 No transactions yet
               </div>
@@ -183,11 +198,10 @@ export function DashboardClient() {
           </div>
         </Card>
 
-        {/* Quick Actions */}
         <Card className="col-span-3 p-6">
           <h2 className="mb-6 text-xl font-semibold">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-4">
-            <Button className="h-auto flex-col items-start justify-start p-4">
+            <Button className="h-auto flex-col items-start justify-start p-4" onClick={handleAddTransaction}>
               <div className="bg-primary/10 mb-2 flex h-10 w-10 items-center justify-center rounded-full">
                 <Plus className="text-primary h-5 w-5" />
               </div>
@@ -220,4 +234,6 @@ export function DashboardClient() {
       </div>
     </div>
   );
-} 
+}
+
+const fetcher = (url: string) => fetch(url).then(res => res.json()); 
