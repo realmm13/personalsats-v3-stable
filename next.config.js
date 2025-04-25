@@ -1,21 +1,11 @@
-import { withContentCollections } from "@content-collections/next";
+import { withContentlayer } from 'next-contentlayer'
 
 const derivedUrl =
-  (process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`) ||
-  (process.env.RAILWAY_PUBLIC_DOMAIN &&
-    `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`) ||
-  process.env.RENDER_EXTERNAL_URL ||
-  process.env.COOLIFY_URL ||
-  `http://localhost:${process.env.PORT ?? 3000}`;
+  process.env.VERCEL_URL && process.env.VERCEL_ENV === "preview"
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.NEXT_PUBLIC_APP_URL;
 
-const serverUrl = process.env.SERVER_URL || derivedUrl;
-
-if (process.env.NODE_ENV === "production") {
-  console.log("Derived server URL → ", derivedUrl);
-  console.log("SERVER_URL → ", serverUrl);
-}
-
-/** @type {import("next").NextConfig} */
+/** @type {import('next').NextConfig} */
 const config = {
   experimental: {
     viewTransition: true,
@@ -23,7 +13,7 @@ const config = {
 
   env: {
     // pass url here so it's usable on the client and backend
-    NEXT_PUBLIC_APP_URL: serverUrl,
+    NEXT_PUBLIC_APP_URL: derivedUrl,
   },
 
   images: {
@@ -42,4 +32,4 @@ const config = {
   },
 };
 
-export default withContentCollections(config);
+export default withContentlayer(config);

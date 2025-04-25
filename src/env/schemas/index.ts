@@ -6,6 +6,7 @@ import * as generalSchemas from "./general";
 import * as polarSchemas from "./polar";
 import * as uploadThingSchemas from "./uploadthing";
 import * as redisSchemas from "./redis";
+import { bitcoinEnvSchema } from "./bitcoin";
 
 export const clientSchema = z
   .object({})
@@ -15,7 +16,12 @@ export const clientSchema = z
   .merge(emailSchema.clientSchema)
   .merge(generalSchemas.clientSchema)
   .merge(polarSchemas.clientSchema)
-  .merge(uploadThingSchemas.clientSchema);
+  .merge(uploadThingSchemas.clientSchema)
+  .merge(bitcoinEnvSchema.pick({
+    NEXT_PUBLIC_PRICE_CACHE_DURATION: true,
+    NEXT_PUBLIC_PRICE_UPDATE_INTERVAL: true,
+    NEXT_PUBLIC_ENABLE_PRICE_ALERTS: true,
+  }));
 
 export const clientEnvRaw: {
   [k in keyof z.infer<typeof clientSchema>]: string | undefined;
@@ -59,6 +65,14 @@ export const serverSchema = clientSchema
   .and(polarSchemas.serverSchema)
   .and(uploadThingSchemas.serverSchema)
   .and(redisSchemas.serverSchema)
+  .and(bitcoinEnvSchema.pick({
+    COINBASE_API_KEY: true,
+    COINBASE_API_SECRET: true,
+    BINANCE_API_KEY: true,
+    BINANCE_API_SECRET: true,
+    KRAKEN_API_KEY: true,
+    KRAKEN_API_SECRET: true,
+  }))
   // 1a. Email Verification Check (Production)
   .refine(
     (env) => {
