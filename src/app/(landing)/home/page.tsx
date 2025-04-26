@@ -8,7 +8,7 @@ import LandingPricing from "./_components/LandingPricing";
 export default function HomePage() {
   return (
     <>
-      <HomePageGradients />
+      {/* <HomePageGradients /> */}
       <LandingHero />
       <LandingFeatures />
       <LandingPricing />

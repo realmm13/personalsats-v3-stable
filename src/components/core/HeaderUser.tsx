@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { CustomButton } from "@/components/CustomButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,6 +31,11 @@ export function AppHeaderUser({ links }: AppHeaderUserProps) {
   const { isPro } = useUserBillingStatus({ enabled: !!userSession });
   const { isMobile } = useKitzeUI();
   const { isImpersonating, impersonatedUserName } = useIsImpersonating();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Filter the links passed in
   const enabledLinks = filterEnabledLinks(links);
@@ -41,22 +47,23 @@ export function AppHeaderUser({ links }: AppHeaderUserProps) {
     transition: { duration: 0.2 },
   };
 
-  const isLoading = isPending;
-  const isLoggedOut = !isPending && !userSession;
-  const isLoggedIn = !isPending && userSession;
+  if (!isMounted || isPending) {
+    return (
+      <motion.div key="loading-placeholder" {...motionProps}>
+        <Avatar>
+          <AvatarFallback className="animate-pulse cursor-wait bg-gray-300 select-none dark:bg-gray-700">
+            U
+          </AvatarFallback>
+        </Avatar>
+      </motion.div>
+    );
+  }
+
+  const isLoggedOut = !userSession;
+  const isLoggedIn = !!userSession;
 
   return (
     <AnimatePresence mode="wait">
-      {isLoading && (
-        <motion.div key="loading" {...motionProps}>
-          <Avatar>
-            <AvatarFallback className="animate-pulse cursor-wait bg-gray-300 select-none dark:bg-gray-700">
-              U
-            </AvatarFallback>
-          </Avatar>
-        </motion.div>
-      )}
-
       {isLoggedOut && (
         <motion.div
           className="flex items-center gap-2"

@@ -22,31 +22,31 @@ export function Gradient({ className, colorClass }: GradientProps) {
 export default function HomePageGradients() {
   const id = useId();
 
-  // Define fixed gradients with set colors and positions
+  // Define fixed gradients - change all colors to primary
   const gradients = [
     {
       className: "top-0 left-10 h-36 w-36",
-      colorClass: "from-blue-600 to-purple-600",
+      colorClass: "from-primary to-primary",
     },
     {
       className: "top-96 right-0 h-48 w-48",
-      colorClass: "from-purple-600 to-pink-600",
+      colorClass: "from-primary to-primary",
     },
     {
       className: "top-[40rem] left-1/4 h-40 w-40",
-      colorClass: "from-blue-600 to-teal-600",
+      colorClass: "from-primary to-primary",
     },
     {
       className: "top-[80rem] right-1/4 h-36 w-36",
-      colorClass: "from-indigo-600 to-blue-600",
+      colorClass: "from-primary to-primary",
     },
     {
       className: "top-[120rem] left-10 h-44 w-44",
-      colorClass: "from-pink-600 to-orange-600",
+      colorClass: "from-primary to-primary",
     },
     {
       className: "top-[160rem] right-10 h-32 w-32",
-      colorClass: "from-blue-600 to-purple-600",
+      colorClass: "from-primary to-primary",
     },
   ];
 

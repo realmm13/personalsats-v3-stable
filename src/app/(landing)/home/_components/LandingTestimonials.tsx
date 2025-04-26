@@ -21,7 +21,7 @@ const TestimonialStars = ({ count }: { count: number }) => {
             transition={{ delay: i * 0.1, duration: 0.3 }}
             viewport={{ once: true, margin: "-50px" }}
           >
-            <Star className="h-4 w-4 fill-violet-400 text-violet-400" />
+            <Star className="h-4 w-4 fill-primary text-primary" />
           </motion.div>
         ))}
     </div>

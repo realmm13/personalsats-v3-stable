@@ -2,16 +2,17 @@
 
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CustomButton } from "@/components/CustomButton";
+import { CustomBadge } from "@/components/CustomBadge";
 import { APP_NAME } from "@/config/config";
 import LandingSectionTitle from "./LandingSectionTitle";
 
 function DiscountBadge() {
   return (
-    <div className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-4 py-1 text-sm font-medium text-violet-600 dark:border-violet-900/50 dark:bg-violet-900/20 dark:text-violet-400">
+    <CustomBadge color="primary" size="sm" className="px-4 py-1">
       <span className="mr-1 text-xs">🎉</span> Limited time offer: 20% off
       annual plans
-    </div>
+    </CustomBadge>
   );
 }
 
@@ -23,19 +24,18 @@ function GetStartedButton({
   className?: string;
 }) {
   const isPrimary = variant === "annual";
+  const buttonVariant = variant === "muted" ? "outline" : isPrimary ? undefined : undefined;
+  const buttonColor = isPrimary ? "primary" : variant === "muted" ? "foreground" : "secondary";
 
   return (
-    <Button
-      className={`${className} group flex items-center justify-center gap-2 ${
-        isPrimary
-          ? "bg-gradient-to-r from-violet-600 to-violet-800 hover:from-violet-700 hover:to-violet-900"
-          : ""
-      }`}
-      variant={variant === "muted" ? "outline" : "default"}
+    <CustomButton
+      className={`${className} group`}
+      variant={buttonVariant}
+      color={buttonColor}
     >
       Get started
-      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-    </Button>
+      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+    </CustomButton>
   );
 }
 
@@ -91,7 +91,7 @@ export default function LandingPricing() {
           </motion.div>
 
           <motion.div
-            className="relative rounded-2xl border-2 border-violet-500 bg-violet-50/50 p-8 shadow-lg dark:border-violet-700 dark:bg-violet-900/10"
+            className="relative rounded-2xl border-2 border-primary bg-primary/10 p-8 shadow-lg dark:border-primary dark:bg-primary/10"
             variants={planVariants}
             initial="hidden"
             whileInView="visible"
@@ -99,7 +99,7 @@ export default function LandingPricing() {
             transition={{ delay: 0.2 }}
             whileHover={{ y: -8, transition: { duration: 0.2 } }}
           >
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-4 py-1 text-sm font-medium text-white">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-sm font-medium text-primary-foreground">
               Most Popular
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -114,22 +114,22 @@ export default function LandingPricing() {
               </span>
               <span className="text-gray-600 dark:text-gray-400">/month</span>
             </p>
-            <div className="mt-4 rounded-lg bg-violet-100 p-3 text-sm text-violet-900 dark:bg-violet-900/30 dark:text-violet-200">
+            <div className="mt-4 rounded-lg bg-primary/10 p-3 text-sm text-primary-foreground dark:bg-primary/20 dark:text-primary-foreground">
               <span className="font-medium">Save $48/year</span> with our annual
               billing plan
             </div>
             <GetStartedButton variant="annual" className="mt-8 w-full" />
             <ul className="mt-6 space-y-2 text-sm text-gray-600 dark:text-gray-400">
               <li className="flex items-center gap-2">
-                <span className="text-violet-500">✓</span> Priority customer
+                <span className="text-primary">✓</span> Priority customer
                 support
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-violet-500">✓</span> Advanced analytics
+                <span className="text-primary">✓</span> Advanced analytics
                 and reporting
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-violet-500">✓</span> Additional team
+                <span className="text-primary">✓</span> Additional team
                 collaboration features
               </li>
             </ul>

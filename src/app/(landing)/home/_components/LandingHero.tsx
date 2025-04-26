@@ -7,6 +7,8 @@ import { lorelei } from "@dicebear/collection";
 import { motion } from "framer-motion";
 import { APP_NAME } from "@/config/config";
 import { SmoothLoadImage } from "@/components/SmoothLoadImage";
+import { CustomButton } from "@/components/CustomButton";
+import { CustomBadge } from "@/components/CustomBadge";
 
 // Animated avatar group component
 const AvatarGroup = ({ avatars }: { avatars: string[] }) => {
@@ -52,7 +54,7 @@ export default function LandingHero() {
           transition={{ duration: 0.5 }}
         >
           <motion.div
-            className="mb-2 inline-block rounded-full bg-violet-100 px-3 py-1 text-sm font-medium text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
+            className="mb-2 inline-block rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary dark:bg-primary/20 dark:text-primary"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.4 }}
@@ -66,9 +68,9 @@ export default function LandingHero() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.5 }}
           >
-            Boost Your Productivity{" "}
-            <span className="text-violet-600 dark:text-violet-500">10x</span>{" "}
-            With {APP_NAME}
+            Own Your {" "}
+            <span className="text-primary">Bitcoin</span>{" "}
+            Records With {APP_NAME}
           </motion.h1>
 
           <motion.p
@@ -77,8 +79,7 @@ export default function LandingHero() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.5 }}
           >
-            Our platform helps teams collaborate more effectively, automate
-            repetitive tasks, and deliver better results in less time.
+            Forget spreadsheets and complicated apps. Personal Sats helps you stay on top of your Bitcoin transactions, cost basis, and taxes. Just your sats, your records.
           </motion.p>
 
           <motion.div
@@ -87,21 +88,13 @@ export default function LandingHero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.4 }}
           >
-            <Link
-              href="/signup"
-              className="group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-md bg-violet-600 px-6 font-medium text-white transition-all duration-300 hover:bg-violet-700 hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:outline-none dark:bg-violet-600 dark:hover:bg-violet-700 dark:focus:ring-violet-500"
-            >
-              <span className="relative z-10">Get Started Free</span>
-              <span className="absolute inset-0 bg-gradient-to-r from-violet-500 to-fuchsia-500 opacity-0 transition-opacity duration-300 group-hover:opacity-20"></span>
-            </Link>
+            <CustomButton href="/signup" size="lg" color="primary">
+              Get Started Free
+            </CustomButton>
 
-            <Link
-              href="/demo"
-              className="group inline-flex h-12 items-center justify-center rounded-md border border-gray-200 bg-white px-6 font-medium text-gray-900 transition-all duration-300 hover:border-violet-200 hover:bg-gray-50 hover:shadow-[0_0_15px_rgba(139,92,246,0.2)] focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:outline-none dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200 dark:hover:border-violet-800 dark:hover:bg-gray-900"
-            >
-              <span>Watch Demo</span>
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-            </Link>
+            <CustomButton href="/demo" variant="outline" color="foreground" size="lg" rightIcon={ArrowRight}>
+              Watch Demo
+            </CustomButton>
           </motion.div>
 
           <motion.div
@@ -130,26 +123,13 @@ export default function LandingHero() {
         >
           <div className="relative h-auto min-h-[280px] w-[90%] max-w-[450px]">
             <SmoothLoadImage
-              src="/hero.png"
+              src="/bitcointaxmannew.png"
               alt="Dashboard Preview"
               objectFit="contain"
               priority
               className="h-full w-full"
             />
           </div>
-
-          <motion.div
-            className="absolute -bottom-6 -left-6 h-28 w-28 rounded-lg bg-violet-600 opacity-50 blur-3xl"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 0.5, scale: 1 }}
-            transition={{ duration: 0.8 }}
-          ></motion.div>
-          <motion.div
-            className="absolute -top-6 -right-6 h-28 w-28 rounded-lg bg-fuchsia-600 opacity-50 blur-3xl"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 0.5, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-          ></motion.div>
         </motion.div>
       </div>
     </section>
