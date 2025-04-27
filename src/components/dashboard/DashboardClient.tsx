@@ -24,6 +24,7 @@ import type { Transaction, PortfolioSummary } from '@/lib/types';
 import { Spinner } from "@/components/Spinner";
 
 import { AddTransactionForm } from '@/components/dashboard/AddTransactionForm';
+import { format } from 'date-fns';
 
 export function DashboardClient() {
   const { price: bitcoinPrice, lastUpdated, loading: priceLoading } = useBitcoinPrice();
@@ -169,9 +170,9 @@ export function DashboardClient() {
               recentTransactions.map((tx) => (
                 <div
                   key={tx.id}
-                  className="flex items-center gap-4 rounded-lg border p-3"
+                  className="flex items-start gap-4 rounded-lg border p-3"
                 >
-                  <div className="bg-primary/10 flex h-9 w-9 items-center justify-center rounded-full">
+                  <div className="bg-primary/10 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full">
                     {tx.type === 'buy' ? (
                       <ArrowUpRight className="text-primary h-5 w-5" />
                     ) : (
@@ -183,13 +184,28 @@ export function DashboardClient() {
                       {tx.type === 'buy' ? 'Bought' : 'Sold'} {tx.amount.toFixed(8)} BTC
                     </p>
                     <p className="text-muted-foreground text-xs">
-                      {new Date(tx.timestamp).toLocaleDateString()}
+                      {format(new Date(tx.timestamp), 'MMM d, yyyy, h:mm a')}
                     </p>
+                    <p className="text-muted-foreground text-xs">
+                      Wallet: {tx.wallet}
+                    </p>
+                    {tx.tags && tx.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {tx.tags.map((tag) => (
+                          <Badge key={tag} variant="outline" color="gray" size="sm">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">{formatUSD(tx.amount * tx.price)}</p>
                     <p className="text-muted-foreground text-xs">
                       @ {formatUSD(tx.price)}/BTC
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      Fee: {formatUSD(tx.fee)}
                     </p>
                   </div>
                 </div>
@@ -201,7 +217,7 @@ export function DashboardClient() {
         <Card className="col-span-3 p-6">
           <h2 className="mb-6 text-xl font-semibold">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-4">
-            <Button className="h-auto flex-col items-start justify-start p-4" onClick={handleAddTransaction}>
+            <Button className="h-auto flex-col items-start justify-start p-4" variant="outline" onClick={handleAddTransaction}>
               <div className="bg-primary/10 mb-2 flex h-10 w-10 items-center justify-center rounded-full">
                 <Plus className="text-primary h-5 w-5" />
               </div>

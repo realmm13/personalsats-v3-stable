@@ -6,8 +6,12 @@ export interface Transaction {
   amount: number;
   price: number;
   timestamp: Date;
+  fee: number;
+  wallet: string;
+  tags: string[];
   userId: string;
   notes?: string;
+  encryptedData?: string | null;
 }
 
 export interface PortfolioSummary {

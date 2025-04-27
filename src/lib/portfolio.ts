@@ -15,6 +15,14 @@ interface PortfolioSummary {
   percentageReturn?: number;
 }
 
+// Helper function to ensure timestamp is a Date object
+function parseTransactionDate(transaction: Transaction): Transaction {
+  return {
+    ...transaction,
+    timestamp: new Date(transaction.timestamp), // Convert string/Date to Date
+  };
+}
+
 export function calculatePortfolioSummary(transactions: Transaction[] = [], currentPrice: number | null): PortfolioSummary {
   // Explicitly check if transactions is an array
   if (!Array.isArray(transactions)) {
@@ -29,8 +37,11 @@ export function calculatePortfolioSummary(transactions: Transaction[] = [], curr
     };
   }
 
+  // Convert timestamps to Date objects before sorting/processing
+  const processedTransactions = transactions.map(parseTransactionDate);
+
   // Now it's safe to spread
-  const sortedTransactions = [...transactions].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  const sortedTransactions = [...processedTransactions].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   
   // Track lots for cost basis
   let lots: Lot[] = [];
@@ -82,14 +93,28 @@ export function calculatePortfolioSummary(transactions: Transaction[] = [], curr
 }
 
 export function getRecentTransactions(transactions: Transaction[] = [], limit = 3): Transaction[] {
-  return [...transactions]
+  if (!Array.isArray(transactions)) {
+     console.error("getRecentTransactions received non-array:", transactions);
+     return [];
+  }
+  // Convert timestamps to Date objects before sorting
+  const processedTransactions = transactions.map(parseTransactionDate);
+
+  return [...processedTransactions]
     .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
     .slice(0, limit);
 }
 
 // Helper function to calculate realized gains/losses
 export function calculateRealizedGains(transactions: Transaction[] = []): number {
-  const sortedTransactions = [...transactions].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  if (!Array.isArray(transactions)) {
+     console.error("calculateRealizedGains received non-array:", transactions);
+     return 0;
+  }
+  // Convert timestamps to Date objects before sorting
+  const processedTransactions = transactions.map(parseTransactionDate);
+  
+  const sortedTransactions = [...processedTransactions].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   let lots: Lot[] = [];
   let lotCounter = 1;
   let realizedGains = 0;

@@ -8,7 +8,7 @@ export const authClientSchema = z.object({
 });
 
 export const authServerSchema = z.object({
-  BETTER_AUTH_SECRET: z.string().optional(),
+  BETTER_AUTH_SECRET: z.string().min(32, "BETTER_AUTH_SECRET must be at least 32 characters long"),
   AUTH_ENABLE_CHANGE_EMAIL: zStringToBool.default("false"),
   AUTH_AUTO_SIGN_IN_AFTER_VERIFICATION: zStringToBool.default("true"),
 });

@@ -3,16 +3,12 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { headers } from 'next/headers';
+import { transactionSchema } from "@/schemas/transaction-schema";
 
-const transactionSchema = z.object({
-  type: z.enum(["buy", "sell"]),
-  amount: z.number().positive(),
-  price: z.number().gte(0),
-  fee: z.number().gte(0).optional().default(0),
+// Define the specific schema for the POST API payload
+const transactionApiSchema = z.object({
   timestamp: z.string().datetime(),
-  wallet: z.string().min(1),
-  tags: z.array(z.string()).optional(),
-  notes: z.string().optional(),
+  encryptedData: z.string(),
 });
 
 export async function GET() {
@@ -51,32 +47,37 @@ export async function POST(request: Request) {
     }
 
     const json = await request.json();
-    const parsed = transactionSchema.safeParse(json);
+    // Use the API-specific schema
+    const parsed = transactionApiSchema.safeParse(json);
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid transaction data", details: parsed.error.flatten() },
+        { error: "Invalid API data format", details: parsed.error.flatten() },
         { status: 400 }
       );
     }
 
-    const { type, amount, price, fee, timestamp, wallet, tags, notes } = parsed.data;
+    // Get timestamp and encryptedData
+    const { timestamp, encryptedData } = parsed.data;
 
+    // Save timestamp and encryptedData, set others to null/defaults
     const transaction = await db.bitcoinTransaction.create({
       data: {
-        type,
-        amount,
-        price,
-        fee,
         timestamp: new Date(timestamp),
-        wallet,
-        tags,
-        notes,
+        encryptedData: encryptedData,
         userId: session.user.id,
+        type: null, 
+        amount: null,
+        price: null,
+        fee: null,
+        wallet: null,
+        tags: [], 
+        notes: null,
       },
     });
 
-    return NextResponse.json(transaction);
+    // Return minimal success response
+    return NextResponse.json({ id: transaction.id, status: "success" });
   } catch (error) {
     console.error("Error creating transaction:", error);
     return NextResponse.json(

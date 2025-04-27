@@ -10,8 +10,8 @@ datasource db {
 }
 
 model User {
-  id            String    @id
-  createdAt     DateTime
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
   name          String
   email         String    @unique
@@ -75,9 +75,10 @@ model Session {
 }
 
 model Account {
-  id                    String    @id
+  id                    String    @id @default(cuid())
   accountId             String
   providerId            String
+  type                  String?
   userId                String
   user                  User      @relation(fields: [userId], references: [id])
   accessToken           String?
@@ -119,17 +120,23 @@ model UTImage {
 }
 
 model BitcoinTransaction {
-  id        String   @id @default(cuid())
-  type      String   // 'buy' or 'sell'
-  amount    Float
-  price     Float
-  fee       Float?   @default(0)
-  timestamp DateTime @default(now())
-  wallet    String
-  tags      String[] @default([])
-  notes     String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  type        String?   // Optional
+  amount      Float?    // Optional
+  price       Float?    // Optional
+  timestamp   DateTime
+  fee         Float?    // Optional
+  wallet      String?   // Optional
+  tags        String[]  // Required list (can be empty)
+  notes       String?   // Optional
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // New field for encrypted data
+  encryptedData String? @db.Text // Use Text for potentially long encrypted strings
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([userId])
 }

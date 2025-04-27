@@ -24,3 +24,17 @@ yarn-error.log*
 .content-collections
 .content-collections/generated/index.js
 src/generated/prisma/
+
+# Misc
+.DS_Store
+*.pem
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Lockfiles
+package-lock.json

@@ -18,6 +18,11 @@ import { admin, openAPI, username } from "better-auth/plugins";
 import { headers } from "next/headers";
 import { after } from "next/server";
 import { cache } from "react";
+import bcrypt from "bcrypt";
+
+// ---- Debug Line ----
+console.log("[debug] BETTER_AUTH_SECRET:", process.env.BETTER_AUTH_SECRET);
+// --------------------
 
 let polarClient: Polar | undefined;
 
@@ -232,6 +237,7 @@ export const auth = betterAuth({
           : [],
     },
   },
+  // Restore better-auth's specific email/password handler
   emailAndPassword: {
     enabled: serverEnv.NEXT_PUBLIC_AUTH_ENABLE_EMAIL_PASSWORD_AUTHENTICATION,
     requireEmailVerification:
@@ -247,6 +253,14 @@ export const auth = betterAuth({
       } catch (error) {
         console.error("sendResetPasswordEmail Error:", error);
       }
+    },
+    password: {
+      hash: async (plainPassword: string) => {
+        return bcrypt.hash(plainPassword, 10);
+      },
+      verify: async ({ hash: hashedPassword, password: plainPassword }: { hash: string, password: string }) => {
+        return bcrypt.compare(plainPassword, hashedPassword);
+      },
     },
   },
   ...(emailVerificationConfig && {

@@ -12,6 +12,7 @@ export default function SignInPage() {
   const handleCredentialsSignIn = async (values: SignInSchemaType) => {
     setShowResendVerification(false); // Reset on new attempt
 
+    // Revert back to using authClient.signIn.email
     await authClient.signIn.email(
       {
         email: values.email,
