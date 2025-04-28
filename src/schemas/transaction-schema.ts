@@ -4,9 +4,9 @@ import { z } from "zod";
 // Update schema based on image
 export const transactionSchema = z.object({
   type: z.enum(["buy", "sell"]),
-  amount: z.number().positive("Amount must be positive"),
-  price: z.number().gte(0, "Price must be non-negative"),
-  fee: z.number().gte(0, "Fee must be non-negative").optional(), // Optional
+  amount: z.coerce.number().positive("Amount must be positive"),
+  price: z.coerce.number().gte(0, "Price must be non-negative"),
+  fee: z.coerce.number().gte(0, "Fee must be non-negative").optional(), // Optional
   timestamp: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: "Invalid date/time format (YYYY-MM-DDTHH:mm)",
   }), // Expect combined datetime string

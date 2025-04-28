@@ -12,6 +12,7 @@ export interface Transaction {
   userId: string;
   notes?: string;
   encryptedData?: string | null;
+  decryptionError?: boolean;
 }
 
 export interface PortfolioSummary {

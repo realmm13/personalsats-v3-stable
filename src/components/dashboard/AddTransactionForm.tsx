@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useForm, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -137,20 +137,32 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
   };
 
   const handlePassphraseSubmit = async (passphrase: string) => {
+    setPassphraseModalOpen(false);
+    setError(null);
     try {
       await deriveAndSetKey(passphrase);
-
-      if (pendingFormData) {
-        await actuallySubmitTransaction(pendingFormData);
-        setPendingFormData(null);
-      }
     } catch (error) {
-      console.error("Failed to set encryption key:", error);
+      console.error("Failed to derive key:", error);
       setError(`Encryption Key Error: ${keyError || (error instanceof Error ? error.message : 'Failed to process passphrase.')}`);
-    } finally {
-      setPassphraseModalOpen(false);
     }
   };
+
+  useEffect(() => {
+    if (encryptionKey && pendingFormData && !isLoadingKey) {
+      console.log("useEffect triggered: Key available, submitting pending data.");
+      setError(null);
+
+      actuallySubmitTransaction(pendingFormData)
+        .then(() => {
+          setPendingFormData(null);
+        })
+        .catch((err) => {
+          console.error("Error during useEffect submission:", err);
+        });
+    } else if (keyError && pendingFormData) {
+      setError(`Encryption Key Error: ${keyError}`);
+    }
+  }, [encryptionKey, pendingFormData, isLoadingKey, keyError, actuallySubmitTransaction]);
 
   return (
     <FormProvider {...form}>
@@ -214,7 +226,9 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
       <PassphraseModal
         isOpen={passphraseModalOpen}
         onSubmit={handlePassphraseSubmit}
-        onClose={() => setPassphraseModalOpen(false)}
+        onClose={() => {
+          setPassphraseModalOpen(false);
+        }}
       />
     </FormProvider>
   );

@@ -22,7 +22,7 @@ export async function generateEncryptionKey(passphrase: string): Promise<CryptoK
     },
     passphraseKey,
     { name: "AES-GCM", length: 256 },
-    false,
+    true,
     ["encrypt", "decrypt"]
   );
 }

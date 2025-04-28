@@ -5,11 +5,11 @@ import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Plus, ArrowUpRight, ArrowDownRight, Trash2, Clock } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Trash2, Clock, Pencil } from "lucide-react";
 import { FormFieldInput } from "@/components/FormFieldInput";
 import { FormFieldTextarea } from "@/components/FormFieldTextarea";
 import { CustomButton } from "@/components/CustomButton";
-import { useConfirmAlert } from "@/components/AlertContext";
+import { useAlerts } from "@/components/AlertContext";
 import { FormFieldSegmentedControl } from "@/components/FormFieldSegmentedControl";
 import { Spinner } from "@/components/Spinner";
 import { useDialog } from "@/components/DialogManager";
@@ -21,26 +21,37 @@ import { formatUSD } from "@/lib/price";
 import { useEncryption } from "@/context/EncryptionContext";
 import { PassphrasePrompt } from "@/components/PassphrasePrompt";
 import { decryptString } from "@/lib/encryption";
+import { toast } from "sonner";
+import { EditTransactionForm } from "@/components/dashboard/EditTransactionForm";
 
+// Define ProcessedTransaction with optional/undefined decryptionError
 type ProcessedTransaction = Transaction & {
-  encryptedData?: string | null;
   isDecrypted?: boolean;
-  decryptionError?: string | null;
 };
 
+// Define fetcher for useSWR
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
 function TransactionList() {
-  const { data: rawTransactions, error: swrError, mutate } = useSWR<Transaction[]>("/api/transactions");
-  const confirmAlert = useConfirmAlert();
-  const { encryptionKey, isKeySet } = useEncryption();
+  const { data: rawTransactions, error: swrError, isLoading: swrLoading, mutate: mutateSWR } = 
+    useSWR<Transaction[]>("/api/transactions", fetcher);
+  const { encryptionKey, isLoadingKey, isKeySet } = useEncryption();
   const [processedTransactions, setProcessedTransactions] = useState<ProcessedTransaction[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { confirmAlert } = useAlerts();
+  const { confirmAlertDelete } = useAlerts();
+  const { openDialog, closeDialog } = useDialog();
 
   useEffect(() => {
     const processAndDecrypt = async () => {
+      console.log("processAndDecrypt: isKeySet?", isKeySet, "encryptionKey exists?", !!encryptionKey);
+
       if (!rawTransactions || !isKeySet || !encryptionKey) {
         setProcessedTransactions([]);
         return;
       }
+
+      console.log("processAndDecrypt: Proceeding with key:", encryptionKey);
 
       setIsProcessing(true);
       try {
@@ -50,37 +61,28 @@ function TransactionList() {
             
             if (tx.encryptedData && encryptionKey) {
               try {
-                const decryptedJson = await decryptString(tx.encryptedData, encryptionKey);
-                const decryptedPayload = JSON.parse(decryptedJson);
+                const decryptedString = await decryptString(tx.encryptedData, encryptionKey);
+                const decryptedObject = JSON.parse(decryptedString);
                 return {
                   ...tx,
-                  ...decryptedPayload,
-                  timestamp,
+                  ...decryptedObject,
+                  timestamp: new Date(tx.timestamp),
                   isDecrypted: true,
-                  decryptionError: null,
+                  encryptedData: null,
                 };
-              } catch (decryptionError) {
-                console.error(`Error decrypting transaction ${tx.id}:`, decryptionError);
+              } catch (error) {
+                console.error(`❌ Failed to decrypt transaction ${tx.id}:`, error);
                 return {
                   ...tx,
-                  timestamp,
-                  type: 'buy',
-                  amount: 0,
-                  price: 0,
-                  fee: 0,
-                  wallet: 'N/A',
-                  tags: [],
-                  notes: 'Decryption Failed',
+                  timestamp: new Date(tx.timestamp),
                   isDecrypted: false,
-                  decryptionError: "Decryption failed",
                 };
               }
             } else {
               return {
                 ...tx,
-                timestamp,
+                timestamp: new Date(tx.timestamp),
                 isDecrypted: false,
-                decryptionError: null,
               };
             }
           })
@@ -96,39 +98,74 @@ function TransactionList() {
     processAndDecrypt();
   }, [rawTransactions, encryptionKey, isKeySet]);
 
-  const handleDelete = async (id: string) => {
-    const result = await confirmAlert({
+  const handleEdit = (txToEdit: ProcessedTransaction) => {
+    if (!txToEdit.isDecrypted) {
+        toast.error("Cannot edit a transaction that failed to decrypt.");
+        return;
+    }
+    const dialogId = openDialog({
+        title: "Edit Transaction",
+        component: EditTransactionForm,
+        props: {
+            transaction: txToEdit,
+            onSuccess: () => {
+                mutateSWR();
+                if (dialogId) closeDialog(dialogId);
+            },
+            onCancel: () => {
+                 if (dialogId) closeDialog(dialogId);
+            },
+        },
+    });
+  };
+
+  const handleDelete = (id: string) => {
+    const transactionToDelete = processedTransactions.find(tx => tx.id === id);
+    if (!transactionToDelete) return;
+    const originalTransactions = [...processedTransactions];
+
+    confirmAlertDelete({
       title: "Delete Transaction",
       description: "Are you sure you want to delete this transaction? This action cannot be undone.",
       onConfirm: async () => {
+        setProcessedTransactions(currentTxs => currentTxs.filter(tx => tx.id !== id));
+
         try {
           const response = await fetch(`/api/transactions/${id}`, {
             method: "DELETE",
           });
 
           if (!response.ok) {
-            throw new Error("Failed to delete transaction");
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || "Failed to delete transaction on server");
           }
 
-          mutate();
+          toast.success("Transaction deleted successfully!");
+
         } catch (error) {
           console.error("Error deleting transaction:", error);
+          setProcessedTransactions(originalTransactions);
+          toast.error(error instanceof Error ? error.message : "Could not delete transaction.");
         }
       },
     });
   };
 
   if (!isKeySet) {
-    return <PassphrasePrompt />;
+    // Pass sample data to the prompt
+    const sampleData = rawTransactions?.find(tx => tx.encryptedData)?.encryptedData;
+    return <PassphrasePrompt sampleEncryptedData={sampleData} />;
   }
 
   if (swrError) return <div>Failed to load transactions data. Please try again.</div>;
-  if (!rawTransactions) return <Spinner />;
-
-  if (isProcessing) return <Spinner />;
+  if (swrLoading || (isProcessing && processedTransactions.length === 0)) return <Spinner />;
   
-  if (processedTransactions.length === 0 && !isProcessing) {
+  if (!rawTransactions || rawTransactions.length === 0) {
     return <div className="text-center text-muted-foreground py-8">No transactions found.</div>;
+  }
+  
+  if (!isKeySet && processedTransactions.length === 0) {
+     return <div className="text-center text-muted-foreground py-8">Enter passphrase to view details.</div>;
   }
 
   return (
@@ -136,73 +173,83 @@ function TransactionList() {
       {processedTransactions.map((tx) => (
         <div
           key={tx.id}
-          className={`flex items-start gap-4 rounded-lg border p-3 ${tx.decryptionError ? 'border-destructive bg-destructive/10' : 'bg-card'}`}
+          className={`flex items-start gap-4 rounded-lg border p-3 ${!tx.isDecrypted ? 'opacity-70' : 'bg-card'}`}
         >
-          {tx.decryptionError ? (
-            <div className="flex-1 text-destructive text-sm">
-              <p className="font-medium">Error Processing Transaction</p>
-              <p>Could not decrypt this transaction's details. The passphrase might be incorrect or the data corrupted.</p>
-            </div>
-          ) : (
-            <>
-              <div className="bg-primary/10 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full">
-                {tx.type === 'buy' ? (
-                  <ArrowUpRight className="text-primary h-5 w-5" />
-                ) : tx.type === 'sell' ? (
-                  <ArrowDownRight className="text-primary h-5 w-5" /> 
-                ) : (
-                  <Clock className="text-muted-foreground h-5 w-5" />
-                )}
+          <div className="bg-primary/10 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full">
+            {tx.type === 'buy' ? (
+              <ArrowUpRight className="text-primary h-5 w-5" />
+            ) : tx.type === 'sell' ? (
+              <ArrowDownRight className="text-primary h-5 w-5" />
+            ) : (
+              <Clock className="text-muted-foreground h-5 w-5" />
+            )}
+          </div>
+          <div className="flex-1 space-y-1">
+            <p className="text-sm leading-none font-medium">
+              {(tx.type ? tx.type.charAt(0).toUpperCase() + tx.type.slice(1) : 'Processing...')} 
+              {' '}
+              {typeof tx.amount === 'number' ? `${tx.amount.toFixed(6)} BTC` : '...'}
+            </p>
+            <p className="text-muted-foreground text-xs">
+              {tx.timestamp instanceof Date && !isNaN(tx.timestamp.getTime()) ? format(tx.timestamp, 'MMM d, yyyy, h:mm a') : '...'}
+            </p>
+            {tx.wallet ? (
+              <p className="text-muted-foreground text-xs">
+                Wallet: {tx.wallet}
+              </p>
+            ) : tx.isDecrypted ? null : (<p className="text-muted-foreground text-xs italic">...</p>) }
+            
+            {(tx.tags && tx.tags.length > 0) ? (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {tx.tags.map((tag) => (
+                  <Badge key={tag} variant="outline" color="gray" size="sm">
+                    {tag}
+                  </Badge>
+                ))}
               </div>
-              <div className="flex-1 space-y-1">
-                <p className="text-sm leading-none font-medium">
-                  {tx.type ? tx.type.charAt(0).toUpperCase() + tx.type.slice(1) : 'Unknown'} {tx.amount?.toFixed(8) ?? 'N/A'} BTC
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {tx.timestamp instanceof Date && !isNaN(tx.timestamp.getTime()) ? format(tx.timestamp, 'MMM d, yyyy, h:mm a') : 'Invalid Date'}
-                </p>
-                {tx.wallet && (
-                  <p className="text-muted-foreground text-xs">
-                    Wallet: {tx.wallet}
-                  </p>
-                )}
-                {tx.tags && tx.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {tx.tags.map((tag) => (
-                      <Badge key={tag} variant="outline" color="gray" size="sm">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-                {tx.notes && (
-                  <div className="text-sm text-muted-foreground italic pt-1">
-                    {tx.notes}
-                  </div>
-                )}
+            ) : tx.isDecrypted ? null : (<div className="text-xs text-muted-foreground italic">...</div>) }
+            
+            {tx.notes && (
+              <div className="text-sm text-muted-foreground italic pt-1">
+                {tx.notes}
               </div>
-              <div className="text-right">
-                <p className="text-sm font-medium">
-                  {typeof tx.amount === 'number' && typeof tx.price === 'number' ? formatUSD(tx.amount * tx.price) : 'N/A'}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  @ {typeof tx.price === 'number' ? formatUSD(tx.price) : 'N/A'}/BTC
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  Fee: {typeof tx.fee === 'number' ? formatUSD(tx.fee) : 'N/A'}
-                </p>
+            )}
+            {!tx.isDecrypted && encryptionKey && (
+               <p className="text-xs text-destructive">Decryption Failed</p>
+            )}
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-medium">
+              {typeof tx.amount === 'number' && typeof tx.price === 'number' ? formatUSD(tx.amount * tx.price) : '...'}
+            </p>
+            <p className="text-muted-foreground text-xs">
+              @ {typeof tx.price === 'number' ? formatUSD(tx.price) : '...'}/BTC
+            </p>
+            <p className="text-muted-foreground text-xs">
+              Fee: {typeof tx.fee === 'number' ? formatUSD(tx.fee) : '...'}
+            </p>
+            {tx.isDecrypted && (
+              <div className="flex justify-end items-center space-x-1 mt-1">
+                <CustomButton
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-1 text-muted-foreground hover:text-foreground"
+                  onClick={() => handleEdit(tx)}
+                  tooltip="Edit Transaction"
+                  leftIcon={Pencil}
+                />
                 <CustomButton
                   variant="ghost"
                   size="sm"
                   color="destructive"
-                  className="mt-1 h-auto p-1"
+                  className="h-auto p-1"
                   onClick={() => handleDelete(tx.id)}
                   tooltip="Delete Transaction"
                   leftIcon={Trash2}
                 />
               </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
       ))}
     </div>

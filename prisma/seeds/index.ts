@@ -4,6 +4,10 @@ import { PrismaClient } from "@/generated/prisma";
 // Remove auth import if not needed elsewhere
 // import { auth } from "@/server/auth"; 
 import bcrypt from "bcrypt"; // Import bcrypt
+// Import Node.js crypto for Web Crypto API access in script environment
+import { webcrypto as crypto } from 'node:crypto'; 
+// Import encryption utils using alias
+import { generateEncryptionKey, encryptString } from "@/lib/encryption"; 
 
 const prisma = new PrismaClient();
 
@@ -12,7 +16,24 @@ const prisma = new PrismaClient();
 const users: { ... }[] = [ ... ];
 */
 
+// --- Define Seed Passphrase --- 
+// IMPORTANT: Use this same passphrase in your app to decrypt these seeds
+const SEED_PASSPHRASE = "seedPhrase123"; 
+// -----------------------------
+
 (async function main() {
+  // Generate the CryptoKey for seeding
+  console.log(`Generating encryption key from seed passphrase...`);
+  let encryptionKey: CryptoKey;
+  try {
+    // @ts-ignore Assuming generateEncryptionKey is compatible with Node's CryptoKey
+    encryptionKey = await generateEncryptionKey(SEED_PASSPHRASE);
+    console.log("✅ Seed encryption key generated.");
+  } catch(e) {
+    console.error("❌ Failed to generate seed encryption key:", e);
+    process.exit(1);
+  }
+
   // --- Add Test User --- 
   console.log("Attempting to create test user...");
   const testEmail = "testuser@example.com";
@@ -81,29 +102,44 @@ const users: { ... }[] = [ ... ];
   }
   // --- End Add Test User ---
 
-  console.log("Finding existing user user1@gmail.com...");
-  
-  // Find user1 directly in the database
-  const user1 = await prisma.user.findUnique({
-    where: { email: "user1@gmail.com" },
-  });
+  // --- Find or Create user1@gmail.com ---
+  const user1Email = "user1@gmail.com";
+  console.log(`Finding or creating user ${user1Email}...`);
+  let user1 = await prisma.user.findUnique({ where: { email: user1Email } });
 
   if (!user1) {
-    console.error("User user1@gmail.com not found. Please ensure this user exists.");
-    process.exit(1); // Exit if user not found
-    return;
+    console.log(`User ${user1Email} not found. Creating...`);
+    try {
+      user1 = await prisma.user.create({
+        data: {
+          email: user1Email,
+          name: "User One",
+          emailVerified: true, // Assuming verified for simplicity in seeding
+          role: "user",
+          // Add any other required fields for the User model
+        },
+      });
+      console.log(`✅ Created user ${user1Email}.`);
+      // Optionally create a credential account for user1 as well, similar to testuser
+      // const user1Password = "password123"; // Example password
+      // const hashedUser1Password = await bcrypt.hash(user1Password, 10);
+      // await prisma.account.create({ data: { userId: user1.id, ... } });
+    } catch (error) {
+      console.error(`❌ Failed to create user ${user1Email}:`, error);
+      process.exit(1); // Exit if user creation fails
+    }
+  } else {
+    console.log(`Found existing user ${user1Email}.`);
   }
+  // --- End Find or Create user1@gmail.com ---
 
-  console.log(`Found user ${user1.email}. Deleting existing transactions...`);
+  console.log(`Deleting existing transactions for ${user1.email}...`); // Use user1 safely now
+  await prisma.bitcoinTransaction.deleteMany({ where: { userId: user1.id } });
+  console.log(`✅ Existing transactions deleted for ${user1.email}.`);
 
-  // Delete any existing transactions for this user first
-  await prisma.bitcoinTransaction.deleteMany({
-    where: { userId: user1.id },
-  });
+  console.log(`Seeding encrypted transactions for ${user1.email}...`);
 
-  console.log(`Seeding transactions for ${user1.email}...`);
-
-  const sampleTransactions = [
+  const sampleTransactionsRaw = [
     {
       type: "buy",
       amount: 0.5,
@@ -149,11 +185,38 @@ const users: { ... }[] = [ ... ];
     },
   ];
 
+  // Encrypt the transactions
+  const encryptedTransactionsData = await Promise.all(
+    sampleTransactionsRaw.map(async (tx) => {
+      // Select fields to encrypt
+      const payloadToEncrypt = {
+        type: tx.type,
+        amount: tx.amount,
+        price: tx.price,
+        fee: tx.fee,
+        wallet: tx.wallet,
+        tags: tx.tags,
+        notes: tx.notes,
+      };
+      // Encrypt the payload
+      // @ts-ignore Assuming encryptString is compatible with Node's CryptoKey
+      const encrypted = await encryptString(JSON.stringify(payloadToEncrypt), encryptionKey);
+      
+      // Return data structure for createMany
+      return {
+        userId: user1.id,
+        timestamp: tx.timestamp, // Keep original timestamp
+        encryptedData: encrypted, // Store the encrypted blob
+      };
+    })
+  );
+
+  // Seed the encrypted data
   await prisma.bitcoinTransaction.createMany({
-    data: sampleTransactions,
+    data: encryptedTransactionsData,
   });
 
-  console.log("Transactions seeded for user1.");
+  console.log(`✅ ${encryptedTransactionsData.length} encrypted transactions seeded for ${user1.email}.`);
 
 })().catch((e) => {
   console.error(e);
