@@ -13,6 +13,7 @@ import { encryptString } from "@/lib/encryption";
 import { toast } from "sonner";
 import type { Transaction } from "@/lib/types";
 import { formatISO } from 'date-fns';
+import { authClient } from "@/server/auth/client";
 
 // Enforce all fields are present for editing, fee is optional but defaults
 const editTransactionSchema = z.object({
@@ -67,7 +68,6 @@ export function EditTransactionForm({ transaction, onSuccess, onCancel }: EditTr
       return;
     }
 
-    // Convert timestamp string back to Date object before encrypting/sending
     let timestampToSend: Date;
     try {
       timestampToSend = new Date(data.timestamp);
@@ -90,7 +90,6 @@ export function EditTransactionForm({ transaction, onSuccess, onCancel }: EditTr
         tags: data.tags ? data.tags.split(",").map(tag => tag.trim()).filter(Boolean) : [],
         notes: data.notes,
       };
-
       const encryptedData = await encryptString(JSON.stringify(payloadToEncrypt), encryptionKey);
 
       const response = await fetch(`/api/transactions/${transaction.id}`, {
@@ -102,16 +101,45 @@ export function EditTransactionForm({ transaction, onSuccess, onCancel }: EditTr
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to update transaction");
+      if (response.ok) {
+        toast.success("Transaction updated successfully!");
+        onSuccess?.();
+        return;
       }
 
-      toast.success("Transaction updated successfully!");
-      onSuccess?.();
+      let errorMsg = "Something went wrong. Please try again.";
+      try {
+        const errorData = await response.json();
+        if (errorData && errorData.error) {
+          errorMsg = errorData.error;
+        }
+      } catch (jsonError) {
+        errorMsg = response.statusText || errorMsg;
+      }
+
+      switch (response.status) {
+        case 400:
+          toast.error(`Invalid data: ${errorMsg}`);
+          break;
+        case 401:
+          toast.error("Session expired. Please log in again.");
+          await authClient.signOut();
+          break;
+        case 403:
+          toast.error("Forbidden: You don't have permission to edit this transaction.");
+          break;
+        case 404:
+          toast.error(`Transaction not found: ${errorMsg}`);
+          break;
+        default:
+          toast.error(`Error: ${errorMsg}`);
+          break;
+      }
+      console.error("Edit failed:", { status: response.status, message: errorMsg });
+
     } catch (error) {
-      console.error("Error updating transaction:", error);
-      toast.error(error instanceof Error ? error.message : "An unexpected error occurred.");
+      console.error("Error updating transaction (onSubmit catch):", error);
+      toast.error(error instanceof Error ? error.message : "An unexpected network error occurred.");
     }
   };
 
@@ -145,7 +173,12 @@ export function EditTransactionForm({ transaction, onSuccess, onCancel }: EditTr
 
         <div className="flex justify-end space-x-2 pt-4">
           {onCancel && <CustomButton type="button" variant="outline" onClick={onCancel}>Cancel</CustomButton>}
-          <CustomButton type="submit" loading={methods.formState.isSubmitting} color="primary">
+          <CustomButton 
+            type="submit" 
+            loading={methods.formState.isSubmitting} 
+            disabled={!methods.formState.isDirty || methods.formState.isSubmitting}
+            color="primary"
+          >
             Save Changes
           </CustomButton>
         </div>

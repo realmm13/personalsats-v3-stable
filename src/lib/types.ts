@@ -2,17 +2,23 @@ export type TransactionType = 'buy' | 'sell';
 
 export interface Transaction {
   id: string;
-  type: TransactionType;
-  amount: number;
-  price: number;
-  timestamp: Date;
-  fee: number;
-  wallet: string;
-  tags: string[];
   userId: string;
-  notes?: string;
+  timestamp: string | Date;
+  type?: 'buy' | 'sell' | null;
+  amount?: number | null;
+  asset?: string;
+  price?: number | null;
+  priceAsset?: string;
+  fee?: number | null;
+  feeAsset?: string;
+  wallet?: string | null;
+  counterparty?: string | null;
+  tags?: string[];
+  notes?: string | null;
+  exchangeTxId?: string | null;
   encryptedData?: string | null;
   decryptionError?: boolean;
+  isDecrypted?: boolean;
 }
 
 export interface PortfolioSummary {

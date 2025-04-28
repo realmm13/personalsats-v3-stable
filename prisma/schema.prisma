@@ -120,23 +120,39 @@ model UTImage {
 }
 
 model BitcoinTransaction {
-  id          String    @id @default(cuid())
-  type        String?   // Optional
-  amount      Float?    // Optional
-  price       Float?    // Optional
-  timestamp   DateTime
-  fee         Float?    // Optional
-  wallet      String?   // Optional
-  tags        String[]  // Required list (can be empty)
-  notes       String?   // Optional
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // New field for encrypted data
-  encryptedData String? @db.Text // Use Text for potentially long encrypted strings
+  // Core Transaction Details (potentially inside encryptedData)
+  timestamp     DateTime  // Required: When the transaction happened. Also stored unencrypted for sorting/querying.
+  type          String?   // 'buy' or 'sell'. Optional in DB schema as it's inside the blob.
+  amount        Float?    // Amount of the primary asset. Optional in DB schema.
+  asset         String    @default("BTC")
+  price         Float?    // Price per unit of primary asset. Optional in DB schema.
+  priceAsset    String?   @default("USD")
+  fee           Float?    // Fee amount. Optional in DB schema.
+  feeAsset      String?   // Asset the fee was paid in (e.g., "USD", "BTC"). Optional in DB schema.
+  wallet        String?   // Wallet/Exchange name. Optional in DB schema.
+  counterparty  String?   // Optional: P2P peer, specific exchange details, etc.
+  tags          String[]  // User-defined tags (remains unencrypted for filtering).
+  notes         String?   // Optional notes. Optional in DB schema.
+  exchangeTxId  String?   // Optional: Original transaction ID from the exchange/source.
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  // Encryption & Timestamps
+  encryptedData String?   @db.Text // Stores the encrypted blob of sensitive fields (type, amount, price, fee, wallet, notes etc.)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  @@index([userId])
+  @@index([userId, timestamp]) // Index for common queries by user and date.
+  // @@map("bitcoin_transactions") // Assuming no explicit map or it matches this name
 }
+
+// --- Model for Historical Prices ---
+model PriceHistory {
+  timestamp DateTime @id // Use timestamp as the unique ID
+  priceUsd  Float    // Store the USD price at that time
+
+  @@map("price_history") // Optional: define a table name
+}
+// --- End PriceHistory Model ---

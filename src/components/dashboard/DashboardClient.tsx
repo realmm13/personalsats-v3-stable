@@ -15,6 +15,7 @@ import {
   Clock,
   Plus,
   BarChart3,
+  Upload,
 } from "lucide-react";
 
 import { useBitcoinPrice } from '@/hooks/useBitcoinPrice';
@@ -24,6 +25,7 @@ import type { Transaction, PortfolioSummary } from '@/lib/types';
 import { Spinner } from "@/components/Spinner";
 
 import { AddTransactionForm } from '@/components/dashboard/AddTransactionForm';
+import { TransactionImporter } from '@/components/import/TransactionImporter';
 import { format } from 'date-fns';
 import { useEncryption } from "@/context/EncryptionContext";
 import { decryptString } from "@/lib/encryption";
@@ -127,6 +129,18 @@ export function DashboardClient() {
       props: {
         onSuccess: () => {
           mutateTransactions();
+        },
+      },
+    });
+  };
+
+  const handleOpenImportModal = () => {
+    openDialog({
+      title: "Import Transactions from CSV",
+      component: TransactionImporter,
+      props: {
+        onSuccess: () => { 
+          mutateTransactions(); 
         },
       },
     });
@@ -291,7 +305,7 @@ export function DashboardClient() {
 
           <Card className="col-span-3 p-6">
             <h2 className="mb-6 text-xl font-semibold">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Button className="h-auto flex-col items-start justify-start p-4" variant="outline" onClick={handleAddTransaction}>
                 <div className="bg-primary/10 mb-2 flex h-10 w-10 items-center justify-center rounded-full">
                   <Plus className="text-primary h-5 w-5" />
@@ -302,6 +316,20 @@ export function DashboardClient() {
                   </p>
                   <p className="text-muted-foreground text-xs">
                     Buy or sell Bitcoin
+                  </p>
+                </div>
+              </Button>
+
+              <Button className="h-auto flex-col items-start justify-start p-4" variant="outline" onClick={handleOpenImportModal}>
+                <div className="bg-primary/10 mb-2 flex h-10 w-10 items-center justify-center rounded-full">
+                  <Upload className="text-primary h-5 w-5" />
+                </div>
+                <div className="space-y-1 text-left">
+                  <p className="text-sm leading-none font-medium">
+                    Import Transactions
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    Import from CSV file
                   </p>
                 </div>
               </Button>

@@ -5,7 +5,7 @@ import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { Plus, ArrowUpRight, ArrowDownRight, Trash2, Clock, Pencil } from "lucide-react";
+import { Plus, ArrowUpRight, ArrowDownRight, Trash2, Clock, Pencil, Upload } from "lucide-react";
 import { FormFieldInput } from "@/components/FormFieldInput";
 import { FormFieldTextarea } from "@/components/FormFieldTextarea";
 import { CustomButton } from "@/components/CustomButton";
@@ -23,6 +23,7 @@ import { PassphrasePrompt } from "@/components/PassphrasePrompt";
 import { decryptString } from "@/lib/encryption";
 import { toast } from "sonner";
 import { EditTransactionForm } from "@/components/dashboard/EditTransactionForm";
+import { TransactionImporter } from "@/components/import/TransactionImporter";
 
 // Define ProcessedTransaction with optional/undefined decryptionError
 type ProcessedTransaction = Transaction & {
@@ -272,18 +273,46 @@ export default function TransactionsPage() {
     });
   };
 
+  const handleOpenImportModal = () => {
+    openDialog({
+      title: "Import Transactions from CSV",
+      component: TransactionImporter,
+      props: {
+        // Example: Define what happens after successful parsing/import
+        // Currently TransactionImporter doesn't have these props, can add later
+        // onSuccess: () => { 
+        //   mutateTransactions(); 
+        //   // closeDialog(dialogId); // Need ID management if closing from here
+        // },
+      },
+      // Adjust size if needed, default might be okay
+      // size: 'lg' 
+    });
+  };
+
   return (
     <div className="container py-8 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Transactions</h1>
-        <CustomButton
-          onClick={handleAddTransaction}
-          leftIcon={Plus}
-          variant="filled"
-          color="primary"
-        >
-          Add Transaction
-        </CustomButton>
+        <div className="flex items-center space-x-2">
+          <CustomButton
+            onClick={handleOpenImportModal}
+            leftIcon={Upload}
+            variant="outline"
+            size="sm"
+          >
+            Import from File
+          </CustomButton>
+          <CustomButton
+            onClick={handleAddTransaction}
+            leftIcon={Plus}
+            variant="filled"
+            color="primary"
+            size="sm"
+          >
+            Add Transaction
+          </CustomButton>
+        </div>
       </div>
 
       <TransactionList />

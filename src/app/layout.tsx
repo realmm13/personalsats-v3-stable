@@ -66,7 +66,8 @@ export default async function RootLayout({
             </ThemeWrapper>
           </TRPCReactProvider>
         </NuqsAdapter>
-        <LevaPanel />
+        {/* Only render Leva panel in development */}
+        {process.env.NODE_ENV === 'development' && <LevaPanel />}
       </body>
     </html>
   );
