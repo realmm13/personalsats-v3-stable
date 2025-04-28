@@ -24,6 +24,13 @@ import { decryptString } from "@/lib/encryption";
 import { toast } from "sonner";
 import { EditTransactionForm } from "@/components/dashboard/EditTransactionForm";
 import { TransactionImporter } from "@/components/import/TransactionImporter";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 // Define ProcessedTransaction with optional/undefined decryptionError
 type ProcessedTransaction = Transaction & {
@@ -258,11 +265,12 @@ function TransactionList() {
 }
 
 export default function TransactionsPage() {
-  const { openDialog } = useDialog();
+  const { openDialog: openAddTransactionDialog } = useDialog();
   const { mutate: mutateTransactions } = useSWR<Transaction[]>("/api/transactions");
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const handleAddTransaction = () => {
-    openDialog({
+    openAddTransactionDialog({
       title: "Add Transaction",
       component: AddTransactionForm,
       props: {
@@ -274,20 +282,16 @@ export default function TransactionsPage() {
   };
 
   const handleOpenImportModal = () => {
-    openDialog({
-      title: "Import Transactions from CSV",
-      component: TransactionImporter,
-      props: {
-        // Example: Define what happens after successful parsing/import
-        // Currently TransactionImporter doesn't have these props, can add later
-        // onSuccess: () => { 
-        //   mutateTransactions(); 
-        //   // closeDialog(dialogId); // Need ID management if closing from here
-        // },
-      },
-      // Adjust size if needed, default might be okay
-      // size: 'lg' 
-    });
+    setIsImportModalOpen(true);
+  };
+
+  const handleCloseImportModal = () => {
+    setIsImportModalOpen(false);
+  };
+
+  const handleImportComplete = () => {
+    setIsImportModalOpen(false);
+    mutateTransactions();
   };
 
   return (
@@ -316,6 +320,19 @@ export default function TransactionsPage() {
       </div>
 
       <TransactionList />
+
+      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+        <DialogContent className="sm:max-w-xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Import Transactions from CSV</DialogTitle>
+          </DialogHeader>
+          
+          <TransactionImporter
+            onSuccess={handleImportComplete}
+            onCancel={handleCloseImportModal}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

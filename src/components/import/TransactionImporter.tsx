@@ -1,19 +1,24 @@
 "use client";
 
-import { useState, ChangeEvent } from 'react';
+import React, { useState, ChangeEvent } from 'react';
 import Papa from 'papaparse';
-import { Button } from '@/components/ui/button'; // Use Shadcn Button
-import { Input } from '@/components/ui/input';   // Use Shadcn Input
-import { Label } from '@/components/ui/label';   // Use Shadcn Label
-import { Spinner } from '@/components/Spinner'; // Use existing Spinner
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Spinner } from '@/components/Spinner';
 import { toast } from 'sonner';
-import { processStrikeCsv } from '@/lib/importAdapters/strike'; 
-// Import encryption hooks and utils
 import { useEncryption } from "@/context/EncryptionContext";
+import { processStrikeCsv } from '@/lib/importAdapters/strike';
+import { processRiverCsv } from '@/lib/importAdapters/river';
 import { encryptString } from "@/lib/encryption";
-import type { Transaction } from "@/lib/types"; // Import Transaction type
+import type { Transaction } from "@/lib/types";
 
-// Define the structure we expect from the adapter
+interface TransactionImporterProps {
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
+
 interface ProcessedImport {
   data?: Partial<Transaction>; 
   error?: string;
@@ -21,12 +26,11 @@ interface ProcessedImport {
   reason?: string; 
   needsReview?: boolean;
   needsPrice?: boolean; 
-  sourceRow: Record<string, any>; // Keep source row generic for now
+  sourceRow: Record<string, any>;
 }
 
-// Define the payload structure to send to the bulk API
 interface BulkApiPayloadItem {
-    timestamp: string; // ISO string
+    timestamp: string;
     tags?: string[];
     asset: string;
     priceAsset?: string;
@@ -35,88 +39,102 @@ interface BulkApiPayloadItem {
     encryptedData: string;
 }
 
-export function TransactionImporter() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [parsedRowCount, setParsedRowCount] = useState<number | null>(null);
-  const [processedRowCount, setProcessedRowCount] = useState<number | null>(null);
-  const [importResults, setImportResults] = useState<{success: number, skipped: number, errors: number, review: number} | null>(null);
+type SourceType = "strike" | "river" | "unknown";
 
-  // Get encryption key
+function detectSourceFromHeaders(headers: string[]): SourceType {
+    const lowerHeaders = headers.map(h => h?.toLowerCase() ?? '');
+    if (lowerHeaders.includes('transaction id') && lowerHeaders.includes('currency 1')) return "strike";
+    if (lowerHeaders.includes('sent amount') && lowerHeaders.includes('received amount') && lowerHeaders.includes('tag')) return "river";
+    return "unknown";
+}
+
+export function TransactionImporter({ onSuccess, onCancel }: TransactionImporterProps) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [parsedCount, setParsedCount] = useState<number>(0);
+  const [importedCount, setImportedCount] = useState<number>(0);
+  const [skippedCount, setSkippedCount] = useState<number>(0);
+  const [selectedSource, setSelectedSource] = useState<SourceType | "auto">("auto");
+  
   const { encryptionKey, isKeySet } = useEncryption();
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      // Basic check for CSV type (can be enhanced)
-      if (file.type !== 'text/csv' && !file.name.toLowerCase().endsWith('.csv')) {
-        toast.error("Please select a valid CSV file.");
-        setSelectedFile(null);
-        event.target.value = ''; // Reset file input
-      } else {
-        setSelectedFile(file);
-        setParsedRowCount(null); // Reset count when file changes
-        setProcessedRowCount(null);
-        setImportResults(null);
-      }
-    } else {
-      setSelectedFile(null);
-      setParsedRowCount(null);
-      setProcessedRowCount(null);
-      setImportResults(null);
+    const file = event.target.files?.[0] ?? null;
+    setSelectedFile(file);
+    setFileName(file?.name || '');
+    setParsedCount(0);
+    setImportedCount(0);
+    setSkippedCount(0);
+    setSelectedSource("auto");
+    event.target.value = '';
+
+    if (file) {
+      Papa.parse(file, {
+        preview: 1, header: true, skipEmptyLines: true,
+        complete: (results) => {
+          if (results.meta.fields) {
+            const detected = detectSourceFromHeaders(results.meta.fields);
+            if (detected !== "unknown") {
+              setSelectedSource(detected); 
+              toast.info(`Detected ${detected.charAt(0).toUpperCase() + detected.slice(1)} format.`);
+            } else {
+              toast.info("Could not auto-detect source. Please select manually.");
+            }
+          } else { toast.warning("Could not read headers from CSV."); }
+        },
+        error: (err) => { toast.error(`Error reading file headers: ${err.message}`); }
+      });
     }
   };
 
   const handleImport = () => {
-    if (!selectedFile) {
-      toast.error("Please select a file first.");
+    if (!selectedFile || !isKeySet || !encryptionKey) {
+      toast.error("Please select a file and set your passphrase.");
       return;
-    }
-    if (!isKeySet || !encryptionKey) {
-        toast.error("Encryption key not available. Please ensure your passphrase is set.");
-        return;
     }
 
     setIsLoading(true);
-    setParsedRowCount(null);
-    setProcessedRowCount(null);
-    setImportResults(null);
+    setParsedCount(0);
+    setImportedCount(0);
+    setSkippedCount(0);
     console.log(`Starting parse for file: ${selectedFile.name}`);
 
-    // --- TODO: Implement Adapter Detection Logic --- 
-    // For now, assume it's a Strike file
-    const adapter = processStrikeCsv; // Hardcode Strike adapter for now
-    // --------------------------------------------
+    let adapter: (rows: Record<string, any>[]) => ProcessedImport[];
+    if (selectedFile.name.toLowerCase().includes('river')) {
+      adapter = processRiverCsv as any;
+      toast.info("Detected River CSV format.");
+    } else {
+      adapter = processStrikeCsv;
+      toast.info("Detected Strike CSV format (default).");
+    }
 
     Papa.parse<Record<string, any>>(selectedFile, {
-      header: true,         
-      skipEmptyLines: true, 
-      dynamicTyping: true,  
+      header: true,
+      skipEmptyLines: true,
+      dynamicTyping: true,
       complete: async (results) => {
+        setParsedCount(results.data.length);
+        
         if (results.errors.length > 0) {
           setIsLoading(false);
           console.error('Parsing errors:', results.errors);
           toast.error(`Parsing completed with errors. Check console.`);
-          return; // Stop processing if parsing failed
+          return;
         }
-         
+
         console.log('Parsed rows:', results.data);
-        setParsedRowCount(results.data.length);
         toast.info(`Successfully parsed ${results.data.length} rows. Processing...`);
 
         try {
-          // Pass parsed data to the selected adapter
-          // Need to cast results.data as it might have nulls from dynamicTyping
-          const processedData: ProcessedImport[] = adapter(results.data as any[]); // Use 'as any[]' for now, refine type later
+          const processedData: ProcessedImport[] = adapter(results.data as any[]); 
           console.log("Processed Transactions:", processedData);
-          
+
           const successfulImports = processedData.filter(p => p.data && !p.error && !p.skipped && !p.needsReview);
-          const skippedCount = processedData.filter(p => p.skipped).length;
-          const errorCount = processedData.filter(p => p.error).length;
-          const reviewCount = processedData.filter(p => p.needsReview).length;
+          const skippedImports = processedData.filter(p => p.skipped || p.error || p.needsReview);
           
-          setProcessedRowCount(successfulImports.length);
-          setImportResults({ success: successfulImports.length, skipped: skippedCount, errors: errorCount, review: reviewCount });
+          setImportedCount(successfulImports.length);
+          setSkippedCount(skippedImports.length);
 
           if (successfulImports.length === 0) {
               toast.info("No valid transactions found to import after processing.");
@@ -124,11 +142,10 @@ export function TransactionImporter() {
               return;
           }
 
-          // --- Encrypt and Prepare Payload for API ---
           toast.info(`Encrypting ${successfulImports.length} transactions...`);
           const payloadForApi: BulkApiPayloadItem[] = [];
           for (const item of successfulImports) {
-              if (!item.data) continue; // Should not happen due to filter, but safety check
+              if (!item.data) continue;
               
               const sensitivePayload = {
                   type: item.data.type,
@@ -138,33 +155,28 @@ export function TransactionImporter() {
                   wallet: item.data.wallet,
                   notes: item.data.notes,
                   counterparty: item.data.counterparty,
-                  // Add any other fields that should be encrypted
               };
               
               const encryptedData = await encryptString(JSON.stringify(sensitivePayload), encryptionKey);
               
               payloadForApi.push({
-                  timestamp: item.data.timestamp instanceof Date ? item.data.timestamp.toISOString() : new Date().toISOString(), // Ensure ISO string
-                  tags: item.data.tags ?? [], // Ensure tags is an array
-                  asset: item.data.asset ?? 'BTC', // Default asset
-                  priceAsset: item.data.priceAsset ?? 'USD', // Default price asset
-                  feeAsset: item.data.feeAsset, // Can be null/undefined
+                  timestamp: item.data.timestamp instanceof Date ? item.data.timestamp.toISOString() : new Date().toISOString(),
+                  tags: item.data.tags ?? [],
+                  asset: item.data.asset ?? 'BTC',
+                  priceAsset: item.data.priceAsset ?? 'USD',
+                  feeAsset: item.data.feeAsset,
                   exchangeTxId: item.data.exchangeTxId,
                   encryptedData: encryptedData,
               });
           }
-          // -------------------------------------------
-
+          
           console.log("Payload ready for API:", payloadForApi);
 
-          // --- Send payloadForApi to POST /api/transactions/bulk --- 
           try {
             toast.info(`Sending ${payloadForApi.length} transactions to server...`);
             const response = await fetch('/api/transactions/bulk', { 
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payloadForApi)
             });
 
@@ -172,30 +184,27 @@ export function TransactionImporter() {
               let errorMsg = "Bulk import API failed";
               try {
                   const errorData = await response.json();
-                  if (errorData && errorData.error) {
-                    errorMsg = errorData.error;
-                  }
-              } catch { /* Ignore JSON parse error */ }
+                  if (errorData && errorData.error) errorMsg = errorData.error;
+              } catch { /* Ignore */ }
               throw new Error(`${errorMsg} (Status: ${response.status})`);
             }
 
             const result = await response.json();
             toast.success(`Successfully imported ${result.count} transactions.`);
-            // Optionally revalidate the main transactions list after successful import
-            // mutateSWR(); // If useSWR is available here or passed via props
+            setImportedCount(result.count);
+            onSuccess?.();
             
           } catch (apiError) {
              console.error("Bulk API Error:", apiError);
              toast.error(`Failed to save imported transactions: ${apiError instanceof Error ? apiError.message : 'Unknown API error'}`);
           } finally {
-             setIsLoading(false); // Ensure loading stops even if API fails
+             setIsLoading(false); 
           }
-          // ---------------------------------------------------------
 
         } catch (adapterOrEncryptError) {
             setIsLoading(false);
-            console.error('Adapter processing or encryption error:', adapterOrEncryptError);
-            toast.error(`Error processing file data: ${adapterOrEncryptError instanceof Error ? adapterOrEncryptError.message : 'Unknown error'}`);
+            console.error('Adapter/Encryption error:', adapterOrEncryptError);
+            toast.error(`Error processing file: ${adapterOrEncryptError instanceof Error ? adapterOrEncryptError.message : 'Unknown error'}`);
         }
       },
       error: (err: Error) => {
@@ -207,46 +216,60 @@ export function TransactionImporter() {
   };
 
   return (
-    <div className="p-6 border rounded-lg max-w-lg mx-auto space-y-4"> {/* Increased max-width */}
-      <h2 className="text-xl font-semibold">Import Transactions</h2>
-      
-      <div className="grid w-full max-w-sm items-center gap-1.5">
-        <Label htmlFor="csv-file">Upload CSV File</Label>
-        <Input 
-          id="csv-file"
-          type="file" 
-          accept=".csv" 
-          onChange={handleFileChange} 
-          disabled={isLoading}
-          className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-        />
+    <div className="space-y-4 p-6">
+      <div className="flex items-center space-x-2">
+        <label className="flex-shrink-0">
+          <span className="sr-only">Choose file</span>
+          <Input
+            id="csv-file"
+            type="file"
+            accept=".csv"
+            onChange={handleFileChange}
+            disabled={isLoading}
+            className="hidden"
+          />
+          <Button asChild variant="outline" size="sm" disabled={isLoading}>
+            <span>Choose File</span>
+          </Button>
+        </label>
+        <p className="flex-1 min-w-0 text-sm text-muted-foreground">
+          {fileName || 'No file selected'}
+        </p>
       </div>
 
-      {selectedFile && (
-        <p className="text-sm text-muted-foreground">
-          Selected: {selectedFile.name}
-        </p>
-      )}
-
-      <Button 
-        onClick={handleImport} 
-        disabled={!selectedFile || isLoading || !isKeySet} // Also disable if key not set
-        className="w-full"
-      >
-        {isLoading ? <Spinner size="sm" className="mr-2" /> : null}
-        {isLoading ? 'Processing...' : (isKeySet ? 'Import File' : 'Set Passphrase First')}
-      </Button>
-
-      {/* Display Processing Results */}
-      {importResults && (
-        <div className="text-sm space-y-1 pt-2 text-muted-foreground">
-            <p>Parsed: {importResults.skipped + importResults.errors + importResults.review + importResults.success} rows</p>
-            <p className="text-green-600">Ready to Import: {importResults.success}</p>
-            {importResults.skipped > 0 && <p>Skipped: {importResults.skipped}</p>}
-            {importResults.errors > 0 && <p className="text-red-600">Errors: {importResults.errors}</p>}
-            {importResults.review > 0 && <p className="text-orange-500">Needs Review: {importResults.review}</p>}
+      {(parsedCount > 0) && (
+        <div className="mt-4 grid grid-cols-3 gap-4 w-full border-t pt-4">
+          <div className="flex flex-col items-center space-y-1 text-center min-w-0">
+            <span className="text-xs text-muted-foreground">Parsed</span>
+            <span className="text-lg font-medium truncate">{parsedCount}</span>
+          </div>
+          <div className="flex flex-col items-center space-y-1 text-center min-w-0">
+            <span className="text-xs text-green-600">Imported</span>
+            <span className="text-lg font-medium text-green-600 truncate">{importedCount}</span>
+          </div>
+          <div className="flex flex-col items-center space-y-1 text-center min-w-0">
+            <span className="text-xs text-red-500">Skipped/Errors</span>
+            <span className="text-lg font-medium text-red-500 truncate">{skippedCount}</span>
+          </div>
         </div>
       )}
+
+      <div className="mt-6 flex justify-end space-x-2">
+        <Button
+          variant="outline"
+          onClick={onCancel}
+          disabled={isLoading}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleImport}
+          disabled={!selectedFile || isLoading || !isKeySet}
+        >
+          {isLoading ? <Spinner size="sm" className="mr-2" /> : null}
+          {isLoading ? 'Importing...' : (isKeySet ? 'Import File' : 'Set Passphrase First')}
+        </Button>
+      </div>
     </div>
   );
 } 
