@@ -125,14 +125,13 @@ model BitcoinTransaction {
   userId        String
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Core Transaction Details (potentially inside encryptedData)
-  timestamp     DateTime  // Required: When the transaction happened. Also stored unencrypted for sorting/querying.
-  type          String?   // 'buy' or 'sell'. Optional in DB schema as it's inside the blob.
-  amount        Float?    // Amount of the primary asset. Optional in DB schema.
+  timestamp     DateTime
+  type          String?
+  amount        Float?
   asset         String    @default("BTC")
-  price         Float?    // Price per unit of primary asset. Optional in DB schema.
+  price         Float?
   priceAsset    String?   @default("USD")
-  fee           Float?    // Fee amount. Optional in DB schema.
+  fee           Float?
   feeAsset      String?   // Asset the fee was paid in (e.g., "USD", "BTC"). Optional in DB schema.
   wallet        String?   // Wallet/Exchange name. Optional in DB schema.
   counterparty  String?   // Optional: P2P peer, specific exchange details, etc.
@@ -140,13 +139,12 @@ model BitcoinTransaction {
   notes         String?   // Optional notes. Optional in DB schema.
   exchangeTxId  String?   // Optional: Original transaction ID from the exchange/source.
 
-  // Encryption & Timestamps
   encryptedData String?   @db.Text // Stores the encrypted blob of sensitive fields (type, amount, price, fee, wallet, notes etc.)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  allocations   Allocation[]
-  lots          Lot[]
+  allocations   Allocation[] @relation("TxAllocations")
+  lots          Lot[]        @relation("TxLots")
 
   @@index([userId, timestamp]) // Index for common queries by user and date.
   // @@map("bitcoin_transactions") // Assuming no explicit map or it matches this name
@@ -161,31 +159,35 @@ model PriceHistory {
 }
 // --- End PriceHistory Model ---
 
-// --- Lot Tracking Models ---
+// --- New Allocation Model ---
 model Allocation {
   id          String             @id @default(cuid())
-  lotId       String
-  lot         Lot                @relation(fields: [lotId], references: [id])
-  transaction BitcoinTransaction @relation(fields: [txId], references: [id])
-  txId        String
-  qty         Float
-  costUsd     Float
-  proceedsUsd Float?
-  gainUsd     Float?
+  txId        String             // Link to the transaction this allocation is part of
+  transaction BitcoinTransaction @relation("TxAllocations", fields: [txId], references: [id])
+  
+  lotId       String             // Link to the specific Lot this allocation uses/reduces
+  lot         Lot                @relation("LotAllocations", fields: [lotId], references: [id])
+
+  qty         Float              // how much BTC allocated from the lot
+  costUsd     Float              // cost basis portion allocated
+  proceedsUsd Float?             // USD received (for sells/disposals)
+  gainUsd     Float?             // realized gain or loss in USD
+
+  createdAt   DateTime           @default(now())
 }
 
+// --- Existing Lot Model (Needs relation back to Allocation) ---
 model Lot {
   id             String             @id @default(cuid())
-  transaction    BitcoinTransaction @relation(fields: [txId], references: [id])
   txId           String
+  transaction    BitcoinTransaction @relation("TxLots", fields: [txId], references: [id]) 
   acquiredQty    Float
   costPerUnitUsd Float
   remainingQty   Float
-  allocations    Allocation[]
+  allocations    Allocation[]       @relation("LotAllocations") // Relation back to allocations using this lot
 }
-// --- End Lot Tracking Models ---
 
-// --- Model for Daily Portfolio Snapshots ---
+// --- DailySnapshot Model (Remains the same) ---
 model DailySnapshot {
   userId    String
   date      DateTime
@@ -196,4 +198,3 @@ model DailySnapshot {
 
   @@id([userId, date]) 
 }
-// --- End DailySnapshot Model ---

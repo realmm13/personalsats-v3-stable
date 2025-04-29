@@ -115,6 +115,21 @@ export const EncryptionProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  // Effect for clearing key from sessionStorage on tab/window close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      console.log("[EncryptionProvider] Clearing key from sessionStorage on unload.");
+      sessionStorage.removeItem("encryptionKey");
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Cleanup function to remove the listener when the component unmounts
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []); // Empty dependency array: Setup/cleanup once on mount
+
   // Function to set the key (state + sessionStorage)
   const setKeyAndPersist = useCallback(async (key: CryptoKey | null) => {
     setEncryptionKeyState(key);
@@ -146,21 +161,26 @@ export const EncryptionProvider = ({ children }: { children: ReactNode }) => {
   // Updated deriveAndSetKey to use the persisting setter and return success
   const deriveAndSetKey = useCallback(
     async (passphrase: string): Promise<boolean> => {
+      console.log("[EncryptionProvider] Attempting deriveAndSetKey..."); // Log entry
       setIsLoadingKey(true);
       setKeyError(null);
       try {
         if (!passphrase) {
           throw new Error("Passphrase cannot be empty.");
         }
+        console.log("[EncryptionProvider] Generating key..."); // Log before generation
         const key = await generateEncryptionKey(passphrase);
+        console.log("[EncryptionProvider] Key generated, attempting persist:", key); // Log generated key
         await setKeyAndPersist(key); // Use the setter that also saves
+        console.log("[EncryptionProvider] deriveAndSetKey succeeded."); // Log success
         return true; // Indicate success
       } catch (error) {
-        console.error("Error deriving encryption key:", error);
+        console.error("[EncryptionProvider] Error in deriveAndSetKey:", error); // Log specific error
         setKeyError(
           error instanceof Error ? error.message : "Failed to derive key.",
         );
         await setKeyAndPersist(null); // Clear key state and storage on error
+        console.log("[EncryptionProvider] deriveAndSetKey failed."); // Log failure
         return false; // Indicate failure
       }
     },
@@ -168,7 +188,8 @@ export const EncryptionProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const clearEncryptionKey = useCallback(() => {
-     setKeyAndPersist(null); // Use the setter to clear state and storage
+    console.log("[EncryptionProvider] Explicitly clearing encryption key."); // Add log
+    setKeyAndPersist(null); // Use the setter to clear state and storage
   }, [setKeyAndPersist]);
 
   const value: EncryptionContextType = {

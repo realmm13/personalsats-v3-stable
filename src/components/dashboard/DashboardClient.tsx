@@ -58,18 +58,28 @@ export function DashboardClient() {
 
   // useEffect for decryption
   useEffect(() => {
+    // Removed log from here
+    // console.log("[DashboardClient] Encryption Key Check (in useEffect):", encryptionKey);
+    
     if (!rawTransactions || rawTransactions.length === 0 || !encryptionKey) {
-      // If no raw transactions or no key, clear decrypted state and return
       if (decryptedTransactions.length > 0) setDecryptedTransactions([]); 
       return;
     }
 
     const decryptAll = async () => {
-      console.log("Attempting to decrypt transactions...");
+      // Add log here, just before decryption loop starts
+      console.log("--- [DashboardClient] Starting decryption loop. Key state: ---", encryptionKey); 
+      
+      console.log("Attempting to decrypt transactions..."); // Keep existing log
+      
       const decryptedPromises = rawTransactions.map(async (tx) => {
-        // If there's no encryptedData, return the transaction as is
         if (!tx.encryptedData) {
           return tx;
+        }
+        // Check encryptionKey again just before decrypting (should be same as above log)
+        if (!encryptionKey) { 
+             console.error(`❌ Cannot decrypt tx ${tx.id} because key became null unexpectedly.`);
+             return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: false, decryptionError: true };
         }
 
         try {
@@ -346,22 +356,6 @@ export function DashboardClient() {
                   </p>
                   <p className="text-muted-foreground text-xs">
                     Import from CSV file
-                  </p>
-                </div>
-              </Button>
-
-              <Button
-                className="h-auto flex-col items-start justify-start p-4"
-                variant="outline"
-                onClick={() => router.push('/reports')}
-              >
-                <div className="bg-primary/10 mb-2 flex h-10 w-10 items-center justify-center rounded-full">
-                  <BarChart3 className="text-primary h-5 w-5" />
-                </div>
-                <div className="space-y-1 text-left">
-                  <p className="text-sm leading-none font-medium">View Reports</p>
-                  <p className="text-muted-foreground text-xs">
-                    Performance analytics
                   </p>
                 </div>
               </Button>
