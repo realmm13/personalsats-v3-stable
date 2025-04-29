@@ -16,9 +16,8 @@ import { transactionSchema } from "@/schemas/transaction-schema";
 import { useBitcoinPrice } from "@/hooks/useBitcoinPrice";
 import { formatUSD } from "@/lib/price";
 import { FormFieldTags } from "@/components/FormFieldTags";
-import { generateEncryptionKey, encryptString } from "@/lib/encryption";
+import { encryptString } from "@/lib/encryption";
 import { useEncryption } from "@/context/EncryptionContext";
-import { PassphraseModal } from "@/components/PassphraseModal";
 
 export type TransactionFormData = z.infer<typeof transactionSchema>;
 
@@ -32,14 +31,9 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
 
-  const [passphraseModalOpen, setPassphraseModalOpen] = useState(false);
-  const [pendingFormData, setPendingFormData] = useState<TransactionFormData | null>(null);
-
   const {
     encryptionKey,
-    deriveAndSetKey,
     isLoadingKey,
-    keyError,
   } = useEncryption();
 
   const form = useForm<TransactionFormData>({
@@ -79,9 +73,10 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
     }
   };
 
-  const actuallySubmitTransaction = async (data: TransactionFormData) => {
+  const onSubmit = async (data: TransactionFormData) => {
     if (!encryptionKey) {
       setError("Encryption key is not available. Cannot submit.");
+      console.error("AddTransactionForm: onSubmit called but encryptionKey is missing.");
       return;
     }
 
@@ -114,7 +109,7 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to add transaction");
       }
       onSuccess();
@@ -127,46 +122,9 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
     }
   };
 
-  const handleFormSubmit = async (formData: TransactionFormData) => {
-    if (!encryptionKey) {
-      setPendingFormData(formData);
-      setPassphraseModalOpen(true);
-      return;
-    }
-    await actuallySubmitTransaction(formData);
-  };
-
-  const handlePassphraseSubmit = async (passphrase: string) => {
-    setPassphraseModalOpen(false);
-    setError(null);
-    try {
-      await deriveAndSetKey(passphrase);
-    } catch (error) {
-      console.error("Failed to derive key:", error);
-      setError(`Encryption Key Error: ${keyError || (error instanceof Error ? error.message : 'Failed to process passphrase.')}`);
-    }
-  };
-
-  useEffect(() => {
-    if (encryptionKey && pendingFormData && !isLoadingKey) {
-      console.log("useEffect triggered: Key available, submitting pending data.");
-      setError(null);
-
-      actuallySubmitTransaction(pendingFormData)
-        .then(() => {
-          setPendingFormData(null);
-        })
-        .catch((err) => {
-          console.error("Error during useEffect submission:", err);
-        });
-    } else if (keyError && pendingFormData) {
-      setError(`Encryption Key Error: ${keyError}`);
-    }
-  }, [encryptionKey, pendingFormData, isLoadingKey, keyError, actuallySubmitTransaction]);
-
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <FormFieldSegmentedControl
           name="type"
           options={[
@@ -218,18 +176,16 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
 
         {error && <p className="text-sm text-red-600">Error: {error}</p>}
 
-        <CustomButton type="submit" loading={loading || isLoadingKey} color="primary" className="w-full">
-          {isLoadingKey ? "Deriving Key..." : (loading ? "Saving..." : "Add Transaction")}
+        <CustomButton 
+          type="submit" 
+          loading={loading || isLoadingKey}
+          disabled={!encryptionKey || isLoadingKey || loading}
+          color="primary" 
+          className="w-full"
+        >
+          {isLoadingKey ? "Waiting for key..." : (loading ? "Saving..." : "Add Transaction")}
         </CustomButton>
       </form>
-
-      <PassphraseModal
-        isOpen={passphraseModalOpen}
-        onSubmit={handlePassphraseSubmit}
-        onClose={() => {
-          setPassphraseModalOpen(false);
-        }}
-      />
     </FormProvider>
   );
 } 

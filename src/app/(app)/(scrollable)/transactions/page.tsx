@@ -143,7 +143,12 @@ export default function TransactionsPage() {
       <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
         <DialogContent className="sm:max-w-xl overflow-y-auto">
           <DialogHeader><DialogTitle>Import Transactions from CSV</DialogTitle></DialogHeader>
-          <TransactionImporter onSuccess={handleImportComplete} onCancel={handleCloseImportModal} />
+          <TransactionImporter 
+            onSuccess={handleImportComplete} 
+            onCancel={handleCloseImportModal} 
+            isKeySet={isKeySet}
+            encryptionKey={encryptionKey}
+          />
         </DialogContent>
       </Dialog>
     </div>

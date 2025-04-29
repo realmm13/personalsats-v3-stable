@@ -48,7 +48,11 @@ export function DashboardClient() {
   console.log("[Raw API Data]:", rawTransactions);
   // --------------------
 
-  const { encryptionKey, isLoadingKey } = useEncryption();
+  const { 
+    encryptionKey, 
+    isLoadingKey, 
+    isKeySet
+  } = useEncryption();
   const [decryptedTransactions, setDecryptedTransactions] = useState<Transaction[]>([]);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
@@ -328,7 +332,11 @@ export function DashboardClient() {
                 </div>
               </Button>
 
-              <Button className="h-auto flex-col items-start justify-start p-4" variant="outline" onClick={handleOpenImportModal}>
+              <Button 
+                className="h-auto flex-col items-start justify-start p-4" 
+                variant="outline" 
+                onClick={handleOpenImportModal}
+              >
                 <div className="bg-primary/10 mb-2 flex h-10 w-10 items-center justify-center rounded-full">
                   <Upload className="text-primary h-5 w-5" />
                 </div>
@@ -345,6 +353,7 @@ export function DashboardClient() {
               <Button
                 className="h-auto flex-col items-start justify-start p-4"
                 variant="outline"
+                onClick={() => router.push('/reports')}
               >
                 <div className="bg-primary/10 mb-2 flex h-10 w-10 items-center justify-center rounded-full">
                   <BarChart3 className="text-primary h-5 w-5" />
@@ -370,6 +379,8 @@ export function DashboardClient() {
           <TransactionImporter
             onSuccess={handleImportComplete}
             onCancel={handleCloseImportModal}
+            isKeySet={isKeySet}
+            encryptionKey={encryptionKey}
           />
         </DialogContent>
       </Dialog>

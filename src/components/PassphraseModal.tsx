@@ -1,62 +1,63 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useState } from "react";
-import { toast } from "sonner"; // or your toast library
+import React, { useState } from 'react';
+import { usePassphrase } from '@/lib/passphraseContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
-interface PassphraseModalProps {
-  isOpen: boolean;
-  onSubmit: (passphrase: string) => void;
-  onClose: () => void;
-}
+export default function PassphraseModal() {
+  const { unlock } = usePassphrase();
+  const [input, setInput] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-export function PassphraseModal({ isOpen, onSubmit, onClose }: PassphraseModalProps) {
-  const [passphrase, setPassphrase] = useState("");
+  const handleSubmit = async (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    if (isLoading) return;
+    setIsLoading(true);
+    setError('');
 
-  const handleSubmit = () => {
-    if (passphrase.trim()) {
-      onSubmit(passphrase);
-      setPassphrase("");
+    const success = await unlock(input);
+    if (!success) {
+      setError('Incorrect passphrase. Please try again.');
+      toast.error("Incorrect passphrase.");
+    } else {
+      setInput('');
     }
-  };
-
-  const handleForgotPassphrase = () => {
-    onClose(); // Close the modal
-    toast.warning("🔒 Your passphrase is not recoverable. You'll need to reset your vault to start fresh.");
-    // Optional future: trigger a full "reset vault" flow
+    setIsLoading(false);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="space-y-6">
-        <DialogHeader>
-          <DialogTitle>Enter Your Encryption Passphrase</DialogTitle>
-        </DialogHeader>
-        <Input
-          type="password"
-          placeholder="Enter your passphrase"
-          value={passphrase}
-          onChange={(e) => setPassphrase(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-        />
-        <DialogFooter className="flex flex-col gap-2">
-          <Button onClick={handleSubmit} className="w-full">
-            Submit
-          </Button>
-          <Button variant="ghost" onClick={onClose} className="w-full">
-            Cancel
-          </Button>
-          <button
-            type="button"
-            onClick={handleForgotPassphrase}
-            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
-          >
-            Forgot your passphrase?
-          </button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <form 
+        onSubmit={handleSubmit}
+        className="bg-card text-card-foreground rounded-lg p-6 shadow-xl border w-full max-w-sm"
+      >
+        <h2 className="text-lg font-semibold mb-4">
+          Unlock Session
+        </h2>
+        <div className="space-y-4">
+            <Label htmlFor="passphrase-input" className="sr-only">
+                Enter your passphrase
+            </Label>
+            <Input
+              id="passphrase-input"
+              type="password"
+              placeholder="••••••••"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={isLoading}
+              required
+              autoFocus
+            />
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Verifying...' : 'Unlock'}
+            </Button>
+        </div>
+      </form>
+    </div>
   );
 } 

@@ -45,4 +45,10 @@ export interface Trade {
   totalValue: number;
   userId: string;
   notes?: string;
+}
+
+export interface PortfolioSnapshot {
+  date: string | Date;
+  portfolioValue: number;
+  costBasis: number;
 } 

@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  // output   = "../src/generated/prisma" // Removed to default to node_modules
 }
 
 datasource db {
@@ -54,6 +54,7 @@ model User {
   onboarded Boolean @default(false)
 
   bitcoinTransactions BitcoinTransaction[]
+  dailySnapshots      DailySnapshot[]
 
   @@unique([username])
   @@map("users")
@@ -144,6 +145,9 @@ model BitcoinTransaction {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  allocations   Allocation[]
+  lots          Lot[]
+
   @@index([userId, timestamp]) // Index for common queries by user and date.
   // @@map("bitcoin_transactions") // Assuming no explicit map or it matches this name
 }
@@ -156,3 +160,40 @@ model PriceHistory {
   @@map("price_history") // Optional: define a table name
 }
 // --- End PriceHistory Model ---
+
+// --- Lot Tracking Models ---
+model Allocation {
+  id          String             @id @default(cuid())
+  lotId       String
+  lot         Lot                @relation(fields: [lotId], references: [id])
+  transaction BitcoinTransaction @relation(fields: [txId], references: [id])
+  txId        String
+  qty         Float
+  costUsd     Float
+  proceedsUsd Float?
+  gainUsd     Float?
+}
+
+model Lot {
+  id             String             @id @default(cuid())
+  transaction    BitcoinTransaction @relation(fields: [txId], references: [id])
+  txId           String
+  acquiredQty    Float
+  costPerUnitUsd Float
+  remainingQty   Float
+  allocations    Allocation[]
+}
+// --- End Lot Tracking Models ---
+
+// --- Model for Daily Portfolio Snapshots ---
+model DailySnapshot {
+  userId    String
+  date      DateTime
+  totalCost Float
+  totalValue Float
+
+  user      User @relation(fields: [userId], references: [id])
+
+  @@id([userId, date]) 
+}
+// --- End DailySnapshot Model ---

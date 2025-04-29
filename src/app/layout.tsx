@@ -18,6 +18,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { APP_NAME, APP_DESCRIPTION } from "@/config/config";
 import { LevaPanel } from "@/components/dev/LevaPanel";
 import { EncryptionProvider } from "@/context/EncryptionContext";
+import ClientGate from '@/components/ClientGate';
 
 export const metadata: Metadata = {
   title: APP_NAME,
@@ -52,15 +53,17 @@ export default async function RootLayout({
             <ThemeWrapper>
               <MediaQueriesProvider>
                 <EncryptionProvider>
-                  <KitzeUIProviders>
-                    <ErrorBoundary FallbackComponent={RootErrorFallback}>
-                      <Suspense fallback={<FullPageSpinner />}>
-                        {children}
-                      </Suspense>
-                    </ErrorBoundary>
-                    <RegisterHotkeys hotkeys={hotkeys} />
-                    <Toaster />
-                  </KitzeUIProviders>
+                  <ClientGate>
+                    <KitzeUIProviders>
+                      <ErrorBoundary FallbackComponent={RootErrorFallback}>
+                        <Suspense fallback={<FullPageSpinner />}>
+                          {children}
+                        </Suspense>
+                      </ErrorBoundary>
+                      <RegisterHotkeys hotkeys={hotkeys} />
+                      <Toaster />
+                    </KitzeUIProviders>
+                  </ClientGate>
                 </EncryptionProvider>
               </MediaQueriesProvider>
             </ThemeWrapper>

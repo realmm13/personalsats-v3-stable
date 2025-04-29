@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from '@/components/Spinner';
 import { toast } from 'sonner';
-import { useEncryption } from "@/context/EncryptionContext";
 import { processStrikeCsv } from '@/lib/importAdapters/strike';
 import { processRiverCsv } from '@/lib/importAdapters/river';
 import { encryptString } from "@/lib/encryption";
@@ -17,6 +16,8 @@ import type { Transaction } from "@/lib/types";
 interface TransactionImporterProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  isKeySet: boolean;
+  encryptionKey: CryptoKey | null;
 }
 
 interface ProcessedImport {
@@ -48,7 +49,12 @@ function detectSourceFromHeaders(headers: string[]): SourceType {
     return "unknown";
 }
 
-export function TransactionImporter({ onSuccess, onCancel }: TransactionImporterProps) {
+export function TransactionImporter({
+  onSuccess,
+  onCancel,
+  isKeySet,
+  encryptionKey
+}: TransactionImporterProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -56,8 +62,7 @@ export function TransactionImporter({ onSuccess, onCancel }: TransactionImporter
   const [importedCount, setImportedCount] = useState<number>(0);
   const [skippedCount, setSkippedCount] = useState<number>(0);
   const [selectedSource, setSelectedSource] = useState<SourceType | "auto">("auto");
-  
-  const { encryptionKey, isKeySet } = useEncryption();
+  const [autoDetectedSource, setAutoDetectedSource] = useState<SourceType>("unknown");
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -67,6 +72,7 @@ export function TransactionImporter({ onSuccess, onCancel }: TransactionImporter
     setImportedCount(0);
     setSkippedCount(0);
     setSelectedSource("auto");
+    setAutoDetectedSource("unknown");
     event.target.value = '';
 
     if (file) {
@@ -75,10 +81,11 @@ export function TransactionImporter({ onSuccess, onCancel }: TransactionImporter
         complete: (results) => {
           if (results.meta.fields) {
             const detected = detectSourceFromHeaders(results.meta.fields);
+            setAutoDetectedSource(detected);
             if (detected !== "unknown") {
-              setSelectedSource(detected); 
-              toast.info(`Detected ${detected.charAt(0).toUpperCase() + detected.slice(1)} format.`);
+              setSelectedSource(detected);
             } else {
+              setSelectedSource("auto");
               toast.info("Could not auto-detect source. Please select manually.");
             }
           } else { toast.warning("Could not read headers from CSV."); }
@@ -88,25 +95,40 @@ export function TransactionImporter({ onSuccess, onCancel }: TransactionImporter
     }
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!selectedFile || !isKeySet || !encryptionKey) {
-      toast.error("Please select a file and set your passphrase.");
+      toast.error("Please select a file and ensure your passphrase is set.");
       return;
     }
+
+    // Determine the final adapter type (must be 'strike' or 'river')
+    let finalAdapterType: "strike" | "river";
+
+    if (selectedSource === "strike" || selectedSource === "river") {
+      // User explicitly selected a valid type
+      finalAdapterType = selectedSource;
+    } else if (autoDetectedSource === "strike" || autoDetectedSource === "river") {
+      // Auto-detection found a valid type, and user didn't override with a different valid type
+      finalAdapterType = autoDetectedSource;
+    } else {
+      // Fallback if detection failed or user selected 'auto'
+      finalAdapterType = selectedFile.name.toLowerCase().includes('river') ? 'river' : 'strike';
+      toast.info(`CSV source wasn't explicitly selected or detected, defaulting to: ${finalAdapterType}`);
+    }
+    
+    // Now finalAdapterType is guaranteed to be 'strike' or 'river'
 
     setIsLoading(true);
     setParsedCount(0);
     setImportedCount(0);
     setSkippedCount(0);
-    console.log(`Starting parse for file: ${selectedFile.name}`);
+    console.log(`Starting parse for file: ${selectedFile.name}, using source: ${finalAdapterType}`);
 
     let adapter: (rows: Record<string, any>[]) => ProcessedImport[];
-    if (selectedFile.name.toLowerCase().includes('river')) {
+    if (finalAdapterType === 'river') {
       adapter = processRiverCsv as any;
-      toast.info("Detected River CSV format.");
-    } else {
+    } else { // It must be 'strike'
       adapter = processStrikeCsv;
-      toast.info("Detected Strike CSV format (default).");
     }
 
     Papa.parse<Record<string, any>>(selectedFile, {
@@ -145,7 +167,7 @@ export function TransactionImporter({ onSuccess, onCancel }: TransactionImporter
           toast.info(`Encrypting ${successfulImports.length} transactions...`);
           const payloadForApi: BulkApiPayloadItem[] = [];
           for (const item of successfulImports) {
-              if (!item.data) continue;
+              if (!item.data || !encryptionKey) continue;
               
               const sensitivePayload = {
                   type: item.data.type,
@@ -215,6 +237,16 @@ export function TransactionImporter({ onSuccess, onCancel }: TransactionImporter
     });
   };
 
+  const sourceOverridden = 
+    selectedFile && 
+    autoDetectedSource !== 'unknown' && 
+    selectedSource !== 'auto' && 
+    selectedSource !== autoDetectedSource;
+
+  const sourceLabel = selectedFile 
+    ? `CSV Source (auto-detected: ${autoDetectedSource === 'unknown' ? 'none' : autoDetectedSource})`
+    : 'CSV Source';
+
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center space-x-2">
@@ -236,6 +268,36 @@ export function TransactionImporter({ onSuccess, onCancel }: TransactionImporter
           {fileName || 'No file selected'}
         </p>
       </div>
+
+      {selectedFile && (
+        <div>
+          <Label htmlFor="source-select">{sourceLabel}</Label>
+          <Select
+            value={selectedSource}
+            onValueChange={(value) => setSelectedSource(value as SourceType | "auto")}
+            disabled={isLoading}
+          >
+            <SelectTrigger id="source-select">
+              <SelectValue placeholder="Select CSV Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">Auto-Detect ({autoDetectedSource})</SelectItem>
+              <SelectItem value="strike">Strike</SelectItem>
+              <SelectItem value="river">River</SelectItem>
+            </SelectContent>
+          </Select>
+          {sourceOverridden && (
+            <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+              You've manually selected a source. Make sure this matches your file.
+            </p>
+          )}
+          {!sourceOverridden && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Select the source manually if auto-detection is incorrect.
+            </p>
+          )}
+        </div>
+      )}
 
       {(parsedCount > 0) && (
         <div className="mt-4 grid grid-cols-3 gap-4 w-full border-t pt-4">
