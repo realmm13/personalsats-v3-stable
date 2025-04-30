@@ -126,28 +126,38 @@ model BitcoinTransaction {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   timestamp     DateTime
-  type          String?
+  type          String?   // Consider enum if possible: BUY, SELL, TRANSFER_IN, TRANSFER_OUT, GIFT_RECEIVED, GIFT_SENT, SPEND, MINING_INCOME, STAKING_REWARD
   amount        Float?
   asset         String    @default("BTC")
-  price         Float?
-  priceAsset    String?   @default("USD")
-  fee           Float?
-  feeAsset      String?   // Asset the fee was paid in (e.g., "USD", "BTC"). Optional in DB schema.
-  wallet        String?   // Wallet/Exchange name. Optional in DB schema.
+  price         Float?    // Price per unit of 'asset' in 'priceAsset'
+  priceAsset    String?   @default("USD") // Currency of the price (e.g., USD, EUR)
+  fee           Float?    // Transaction fee amount
+  feeAsset      String?   // Asset the fee was paid in (e.g., "USD", "BTC").
+  wallet        String?   // Wallet/Exchange name.
   counterparty  String?   // Optional: P2P peer, specific exchange details, etc.
-  tags          String[]  // User-defined tags (remains unencrypted for filtering).
-  notes         String?   // Optional notes. Optional in DB schema.
+  tags          String[]  // User-defined tags for filtering/organization.
+  notes         String?   // Optional notes.
   exchangeTxId  String?   // Optional: Original transaction ID from the exchange/source.
 
-  encryptedData String?   @db.Text // Stores the encrypted blob of sensitive fields (type, amount, price, fee, wallet, notes etc.)
+  // Optional: Fields for tracking transfers between user's own wallets/accounts
+  isTransfer    Boolean   @default(false)
+  transferFromWallet String?
+  transferToWallet   String?
+
+  encryptedData String?   @db.Text // Stores the encrypted blob if needed, though individual fields are often better
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Relation to the new TaxLot model
+  taxLots       TaxLot[]  @relation("TxnLots")
+  
+  // Relations added back for Allocation and Lot
   allocations   Allocation[] @relation("TxAllocations")
   lots          Lot[]        @relation("TxLots")
 
   @@index([userId, timestamp]) // Index for common queries by user and date.
-  // @@map("bitcoin_transactions") // Assuming no explicit map or it matches this name
+  // @@map("bitcoin_transactions") // Use default table name
 }
 
 // --- Model for Historical Prices ---
@@ -197,4 +207,25 @@ model DailySnapshot {
   user      User @relation(fields: [userId], references: [id])
 
   @@id([userId, date]) 
+}
+
+model TaxLot {
+  id              String               @id @default(cuid())
+  txId            String
+  openedAt        DateTime
+  originalAmount  Float                // Amount of BTC in this lot when created
+  remainingAmount Float                // Amount of BTC currently remaining in this lot
+  costBasisUsd    Float                // Total USD cost basis for the originalAmount
+  
+  // Fields related to closing the lot (when BTC is sold/disposed)
+  closedAt        DateTime?            // Timestamp when the entire lot was closed (sold/disposed)
+  proceedsUsd     Float?               // Total USD proceeds from selling/disposing this lot
+  gainUsd         Float?               // Calculated gain/loss (proceedsUsd - costBasisUsd)
+  term            String?              // "Short" or "Long" based on holding period
+  
+  // Relation back to the transaction that created this lot
+  transaction     BitcoinTransaction   @relation("TxnLots", fields: [txId], references: [id])
+
+  // Optional: Add index if frequently querying by txId
+  // @@index([txId]) 
 }

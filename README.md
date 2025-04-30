@@ -6,7 +6,7 @@ ENV generator → https://env.zerotoshipped.com/
  
 # ZTS
 
-Zero to Sats - Your Bitcoin Portfolio Tracker
+Personal Sats is a privacy-first, Bitcoin-only portfolio and tax tracker. It helps users manually log trades, calculate capital gains/losses, capture wash sale losses, and get tax-optimized insights — all without linking wallets or exchanges.
 
 ## Environment Variables
 
