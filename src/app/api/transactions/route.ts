@@ -4,10 +4,17 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { headers } from 'next/headers';
 import { transactionSchema } from "@/schemas/transaction-schema";
+import {
+  generateEncryptionKey,
+  decryptString,
+} from "@/lib/encryption";
+import { selectLotsForSale, type CostBasisMethod } from "../../../lib/cost-basis";
+import type { Lot } from "@prisma/client";
+import { processTransaction, BadRequestError } from "@/lib/transactions/process";
 
-// Define the specific schema for the POST API payload
-const transactionApiSchema = z.object({
-  timestamp: z.string().datetime(),
+// Schema for the incoming API request wrapper
+const wrapperSchema = z.object({
+  timestamp: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date string"),
   encryptedData: z.string(),
 });
 
@@ -42,47 +49,33 @@ export async function POST(request: Request) {
   try {
     const currentHeaders = await headers();
     const session = await auth.api.getSession({ headers: new Headers(currentHeaders) });
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.id || !(session.user as any).encryptionPhrase) {
+        console.error("Unauthorized or incomplete session for POST", { userId: session?.user?.id, hasPhrase: !!(session?.user as any)?.encryptionPhrase });
+        return NextResponse.json({ error: "Unauthorized or session incomplete" }, { status: 401 });
     }
 
-    const json = await request.json();
-    // Use the API-specific schema
-    const parsed = transactionApiSchema.safeParse(json);
+    const body = await request.json();
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid API data format", details: parsed.error.flatten() },
-        { status: 400 }
-      );
-    }
-
-    // Get timestamp and encryptedData
-    const { timestamp, encryptedData } = parsed.data;
-
-    // Save timestamp and encryptedData, set others to null/defaults
-    const transaction = await db.bitcoinTransaction.create({
-      data: {
-        timestamp: new Date(timestamp),
-        encryptedData: encryptedData,
-        userId: session.user.id,
-        type: null, 
-        amount: null,
-        price: null,
-        fee: null,
-        wallet: null,
-        tags: [], 
-        notes: null,
-      },
+    const result = await processTransaction(body, {
+        user: {
+            id: session.user.id,
+            encryptionPhrase: (session.user as any).encryptionPhrase,
+            accountingMethod: (session.user as any).accountingMethod
+        }
     });
 
-    // Return minimal success response
-    return NextResponse.json({ id: transaction.id, status: "success" });
-  } catch (error) {
-    console.error("Error creating transaction:", error);
+    return NextResponse.json({ id: result.id, status: "success" });
+
+  } catch (err: any) {
+    console.error("Error processing transaction:", err);
+    
+    if (err instanceof BadRequestError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    
     return NextResponse.json(
-      { error: "Failed to create transaction" },
-      { status: 500 }
+      { error: "Failed to process transaction due to an unexpected error." },
+      { status: 500 } 
     );
   }
 } 
