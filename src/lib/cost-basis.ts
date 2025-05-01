@@ -1,4 +1,8 @@
-export type CostBasisMethod = 'FIFO' | 'LIFO' | 'HIFO';
+export enum CostBasisMethod {
+  FIFO = 'FIFO',
+  LIFO = 'LIFO',
+  HIFO = 'HIFO',
+}
 
 export interface AvailableLot {
   id: string;
@@ -37,11 +41,11 @@ export function selectLotsForSale(
   saleDateMs: number
 ): SaleResult {
   const lots = [...availableLots];
-  if (method === 'FIFO') {
+  if (method === CostBasisMethod.FIFO) {
     lots.sort((a, b) => a.date - b.date);
-  } else if (method === 'LIFO') {
+  } else if (method === CostBasisMethod.LIFO) {
     lots.sort((a, b) => b.date - a.date);
-  } else if (method === 'HIFO') {
+  } else if (method === CostBasisMethod.HIFO) {
     lots.sort((a, b) => b.price - a.price);
   }
 

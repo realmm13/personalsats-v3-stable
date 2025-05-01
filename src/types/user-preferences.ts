@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AI_PROVIDERS } from "@/config/ai-providers";
+import { CostBasisMethod } from "@/lib/cost-basis";
 
 // Create provider preference fields
 const providerEnabledFields: Record<string, z.ZodDefault<z.ZodBoolean>> = {};
@@ -25,6 +26,12 @@ export const userPreferencesSchema = z.object({
   // AI Provider fields (dynamically generated)
   ...providerEnabledFields,
   ...providerKeyFields,
+
+  // New cost basis method preference
+  costBasisMethod: z
+    .enum([CostBasisMethod.FIFO, CostBasisMethod.LIFO, CostBasisMethod.HIFO])
+    .default(CostBasisMethod.HIFO)
+    .describe("Default cost basis method for tax calculations"),
 });
 
 // Derive types from schema

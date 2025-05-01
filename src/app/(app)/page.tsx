@@ -1,13 +1,14 @@
 "use client";
 
-import { Card } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PortfolioLineChart from "./_components/PortfolioLineChart";
 import TransactionList from "./_components/TransactionList";
 import { Spinner } from "@/components/Spinner";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Users, CreditCard, Clock } from "lucide-react";
+import { BarChart3, Users, CreditCard, Clock, PlusIcon, Upload } from "lucide-react";
+import Link from "next/link";
 
 interface Stats {
   totalValue: number;
@@ -151,6 +152,54 @@ export default function AppPage() {
           </Card>
         ))}
       </div>
+
+      {/* ADD QUICK ACTIONS SECTION HERE */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"> {/* Adjust columns as needed */} 
+          {/* New Transaction Card */}
+          <Card asChild className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <Link href="/transactions/new"> {/* Assuming this is the correct path */} 
+              <CardHeader className="items-center text-center gap-2">
+                <div className="p-3 rounded-full bg-primary/10 text-primary">
+                  <PlusIcon className="w-6 h-6" />
+                </div>
+                <CardTitle>New Transaction</CardTitle>
+                <CardDescription>Manually add a buy or sell</CardDescription>
+              </CardHeader>
+            </Link>
+          </Card>
+
+          {/* Import Transactions Card */}
+          <Card asChild className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <Link href="/transactions/import"> {/* Assuming this is the correct path */} 
+              <CardHeader className="items-center text-center gap-2">
+                 <div className="p-3 rounded-full bg-primary/10 text-primary">
+                   <Upload className="w-6 h-6" /> {/* Using Upload icon */} 
+                 </div>
+                <CardTitle>Import Transactions</CardTitle>
+                <CardDescription>Upload from CSV file</CardDescription>
+              </CardHeader>
+            </Link>
+          </Card>
+
+          {/* Tax Ledger Card */}
+          <Card asChild className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <Link href="/tax">
+              <CardHeader className="items-center text-center gap-2">
+                 <div className="p-3 rounded-full bg-primary/10 text-primary">
+                   {/* You might want a more specific icon, e.g., from lucide-react */}
+                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                   </svg>
+                 </div>
+                <CardTitle>Tax Ledger</CardTitle>
+                <CardDescription>View capital gains & losses</CardDescription>
+              </CardHeader>
+            </Link>
+          </Card>
+        </div>
+      </section>
 
       {/* Chart and Transactions */}
       <div className="grid gap-4 md:grid-cols-2">
