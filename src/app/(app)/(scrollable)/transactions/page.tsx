@@ -83,6 +83,7 @@ export default function TransactionsPage() {
   const [isProcessing, setIsProcessing] = useState(false); 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [secondConfirmClearOpen, setSecondConfirmClearOpen] = useState(false);
 
   // --- Debounce Min/Max Amount --- 
   useEffect(() => {
@@ -169,6 +170,12 @@ export default function TransactionsPage() {
   };
 
   const handleClearAllConfirm = async () => {
+    setConfirmClearOpen(false);
+    setSecondConfirmClearOpen(true);
+  };
+
+  const handleFinalClearAll = async () => {
+    setSecondConfirmClearOpen(false);
     try {
       toast.info("Clearing all transactions...");
       await clearAllMutation.mutateAsync();
@@ -178,7 +185,6 @@ export default function TransactionsPage() {
       console.error("Clear all failed:", error);
       toast.error(error instanceof Error ? error.message : "Failed to clear all transactions.");
     }
-    setConfirmClearOpen(false);
   };
 
   // --- Loading / Error / Empty States ---
@@ -242,6 +248,27 @@ export default function TransactionsPage() {
                      </AlertDialogAction>
                    </AlertDialogFooter>
                  </AlertDialogContent>
+             </AlertDialog>
+             {/* Second Confirmation Dialog for Clear All */}
+             <AlertDialog open={secondConfirmClearOpen} onOpenChange={setSecondConfirmClearOpen}>
+               <AlertDialogContent>
+                 <AlertDialogHeader>
+                   <AlertDialogTitle>ARE YOU ABSOLUTELY SURE?</AlertDialogTitle>
+                   <AlertDialogDescription>
+                     This action cannot be undone. This will permanently delete all transactions, lots, and allocation data. There is no going back.
+                   </AlertDialogDescription>
+                 </AlertDialogHeader>
+                 <AlertDialogFooter>
+                   <AlertDialogCancel>Cancel</AlertDialogCancel>
+                   <AlertDialogAction 
+                     onClick={handleFinalClearAll} 
+                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                     disabled={clearAllMutation.isPending} 
+                   >
+                     {clearAllMutation.isPending ? <Spinner size="sm" /> : "Yes, Permanently Delete All"}
+                   </AlertDialogAction>
+                 </AlertDialogFooter>
+               </AlertDialogContent>
              </AlertDialog>
           </div>
        );
@@ -320,6 +347,27 @@ export default function TransactionsPage() {
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
+      </AlertDialog>
+      {/* Second Confirmation Dialog for Clear All */}
+      <AlertDialog open={secondConfirmClearOpen} onOpenChange={setSecondConfirmClearOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ARE YOU ABSOLUTELY SURE?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete all transactions, lots, and allocation data. There is no going back.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleFinalClearAll} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={clearAllMutation.isPending} 
+            >
+              {clearAllMutation.isPending ? <Spinner size="sm" /> : "Yes, Permanently Delete All"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
     </div>
   );
