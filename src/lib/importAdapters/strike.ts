@@ -99,7 +99,7 @@ export function processStrikeCsv(rows: Record<string, any>[]): ProcessedImport[]
   const tradesById: Record<string, StrikeRawRow[]> = {};
 
   // --- Phase 1: Filter, Group Trades, Process Other Types --- 
-  for (const row of rows as StrikeRawRow[]) { // Cast rows for easier access
+  for (const row of rows as StrikeRawRow[]) {
     try {
         const validation = validateRequiredFields(row);
         if (!validation.isValid) {
@@ -113,48 +113,68 @@ export function processStrikeCsv(rows: Record<string, any>[]): ProcessedImport[]
             continue;
         }
         
-        const transactionType = row['Transaction Type'];
+        const transactionType = row['Transaction Type']?.toLowerCase(); // Use lowercase for matching
+        const txId = row['Transaction ID']; // Get Tx ID for notes/reference
 
         // --- Handle different transaction types --- 
 
-        if (transactionType === 'Trade') {
-            // Group Trade rows for later processing
-            const txId = row['Transaction ID'];
-            if (!tradesById[txId]) {
-                tradesById[txId] = [];
-            }
+        if (transactionType === 'trade') {
+            // Group Trade rows
+            if (!tradesById[txId]) tradesById[txId] = [];
             tradesById[txId].push(row);
         
-        } else if (transactionType === 'Deposit' || transactionType === 'Withdrawal') {
-            // Explicitly skip Deposit/Withdrawal types as requested
-            results.push({ sourceRow: row, skipped: true, reason: `Skipping type: ${transactionType}` });
+        } else if (transactionType === 'deposit' || transactionType === 'withdrawal') {
+            // Explicitly skip Strike's own Deposit/Withdrawal types
+            results.push({ sourceRow: row, skipped: true, reason: `Skipping type: ${row['Transaction Type']}` });
             continue;
         
-        } else if (transactionType === 'Onchain') {
-            // Process Onchain transactions
+        } else if (transactionType === 'onchain' || transactionType === 'p2p' || transactionType === 'lightning') {
+            // Process Onchain, P2P, Lightning
             const timestamp = parseStrikeTimestamp(row['Completed Date (UTC)'], row['Completed Time (UTC)']);
             if (!timestamp) {
-                results.push({ sourceRow: row, error: "Invalid completion timestamp for Onchain tx", skipped: true });
+                results.push({ sourceRow: row, error: `Invalid completion timestamp for ${transactionType} tx`, skipped: true });
                 continue;
             }
 
+            // Amount 2 determines direction and amount for these types
             const amount2 = row['Amount 2'];
             const currency2 = row['Currency 2'];
 
+            // These types must involve BTC in Amount 2
             if (currency2 !== 'BTC' || typeof amount2 !== 'number' || amount2 === 0) {
-                results.push({ sourceRow: row, skipped: true, reason: `Onchain tx skipped: Invalid BTC amount/currency (Amount: ${amount2}, Currency: ${currency2})` });
+                results.push({ sourceRow: row, skipped: true, reason: `${transactionType} tx skipped: Invalid BTC amount/currency in Amount 2 (Amount: ${amount2}, Currency: ${currency2})` });
                 continue;
             }
 
             const type: 'deposit' | 'withdrawal' = amount2 > 0 ? 'deposit' : 'withdrawal';
             const amount = Math.abs(amount2);
-            const asset = 'BTC'; // Asset is BTC for Onchain
+            const asset = 'BTC'; 
 
-            // Attempt to parse fee (usually from Amount/Currency 1 for Onchain sends)
-            const feeCurrency = row['Currency 1']; // Check Currency 1 for fee
-            const feeValue = row['Fee 1'] ?? row['Amount 1']; // Fee might be in Fee 1 or reflected in Amount 1
-            const fee = parseFee(feeCurrency, typeof feeValue === 'number' ? feeValue : null);
+            let fee: number | undefined = undefined;
+            let feeAsset: string | undefined = undefined;
+            let notes = `${transactionType.charAt(0).toUpperCase() + transactionType.slice(1)} Transfer`; // Default notes
 
+            if (transactionType === 'lightning') {
+                // Lightning fees are in Fee 2 (BTC)
+                const fee2Value = row['Fee 2'];
+                if (typeof fee2Value === 'number' && fee2Value !== 0) {
+                    fee = Math.abs(fee2Value);
+                    feeAsset = 'BTC';
+                }
+                notes = 'Lightning Transfer';
+            } else if (transactionType === 'onchain') {
+                 // Onchain fees might be in Fee 1 or Amount 1 (often USD cost for the fee)
+                 const feeCurrency = row['Currency 1'];
+                 const feeValue = row['Fee 1'] ?? row['Amount 1'];
+                 const parsedFee = parseFee(feeCurrency, typeof feeValue === 'number' ? feeValue : null);
+                 fee = parsedFee.value;
+                 feeAsset = parsedFee.currency;
+                 notes = 'Onchain Transfer';
+            } else if (transactionType === 'p2p') {
+                // Assume no direct fee for P2P unless specified otherwise
+                notes = 'P2P Transfer';
+            }
+            
             results.push({
                 sourceRow: row,
                 data: {
@@ -162,20 +182,19 @@ export function processStrikeCsv(rows: Record<string, any>[]): ProcessedImport[]
                     type: type,
                     amount,
                     asset,
-                    fee: fee.value,
-                    feeAsset: fee.currency, 
+                    fee: fee, // Use parsed fee
+                    feeAsset: feeAsset, // Use parsed fee asset
                     wallet: 'Strike',
-                    notes: 'Onchain Transfer', // Add a note
-                    exchangeTxId: row['Transaction ID'],
-                    // Price is not applicable for direct BTC transfers
-                    price: undefined,
+                    notes: notes,
+                    exchangeTxId: txId,
+                    price: undefined, // Price not applicable
                     priceAsset: undefined,
                 }
             });
         
         } else {
-            // Skip other types like Lightning, P2P, etc.
-            results.push({ sourceRow: row, skipped: true, reason: `Skipping type: ${transactionType}` });
+            // Skip any other types not explicitly handled
+            results.push({ sourceRow: row, skipped: true, reason: `Skipping unhandled type: ${row['Transaction Type']}` });
             continue;
         }
 
