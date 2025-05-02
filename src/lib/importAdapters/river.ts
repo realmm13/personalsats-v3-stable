@@ -46,71 +46,98 @@ export function processRiverCsv(rows: Record<string, any>[]): ProcessedImport[] 
     try { // Wrap row processing in try/catch for individual errors
       const rawDate = row['Date'];
       const timestamp = new Date(rawDate);
-      // Add validation for timestamp if needed
       if (isNaN(timestamp.getTime())) {
          throw new Error("Invalid date format");
       }
 
-      // Use Number() for potentially safer parsing than parseFloat
-      const sentAmt = Number(row['Sent Amount']);
-      const sentCurrency = String(row['Sent Currency']);
-      const recvAmt = Number(row['Received Amount']);
-      const recvCurrency = String(row['Received Currency']);
-      const feeAmt = Number(row['Fee Amount']);
-      const feeCurrency = String(row['Fee Currency']);
-      const tag = String(row['Tag']);
+      // Use Number() for parsing, default NaN to 0 for checks
+      const sentAmt = Number(row['Sent Amount'] ?? 0);
+      const sentCurrency = String(row['Sent Currency'] ?? '');
+      const recvAmt = Number(row['Received Amount'] ?? 0);
+      const recvCurrency = String(row['Received Currency'] ?? '');
+      const feeAmt = Number(row['Fee Amount'] ?? 0);
+      const feeCurrency = String(row['Fee Currency'] ?? '');
+      const tag = String(row['Tag'] ?? '').trim(); // Trim tag
 
-      // Validate required fields
-      if (isNaN(sentAmt) || isNaN(recvAmt) || isNaN(feeAmt)) {
-         throw new Error("Invalid numeric amount/fee");
-      }
+      // Validate required amounts (at least one amount should be non-zero usually)
+      // if (isNaN(sentAmt) || isNaN(recvAmt) || isNaN(feeAmt)) {
+      //    throw new Error("Invalid numeric amount/fee");
+      // }
 
-      let type: 'buy' | 'sell' | 'receive';
-      let amount: number;
-      let asset: string;
-      let priceUsd: number | undefined;
-      let transactionData: Partial<any> | undefined; // Use Partial<Transaction> later
+      let transactionData: Partial<any> | undefined = undefined; // Use Partial<Transaction>
+      let skipReason: string | undefined = undefined;
 
-      switch (tag) {
-        case 'Buy':
-          type = 'buy';
-          amount = Math.abs(recvAmt);
-          asset = recvCurrency;
-          // Ensure division by zero doesn't happen
-          priceUsd = (amount > 0) ? Math.abs(sentAmt) / amount : undefined;
-          transactionData = { timestamp, type, amount, asset, price: priceUsd, priceAsset: 'USD', fee: feeAmt, feeAsset: feeCurrency, wallet: 'River' }; // Map to canonical structure
-          break;
-
-        case 'Sell':
-          type = 'sell';
-          amount = Math.abs(sentAmt);
-          asset = sentCurrency;
-          priceUsd = (amount > 0) ? Math.abs(recvAmt) / amount : undefined;
-          transactionData = { timestamp, type, amount, asset, price: priceUsd, priceAsset: 'USD', fee: feeAmt, feeAsset: feeCurrency, wallet: 'River' };
-          break;
-
-        case 'Interest':
-          type = 'receive'; // Or maybe a specific 'interest' type?
-          amount = Math.abs(recvAmt);
-          asset = recvCurrency;
-          priceUsd = undefined; // Price doesn't apply to interest
-          // Decide how to handle interest: skip or create a transaction?
-          // Skipping for now, as it doesn't fit buy/sell model easily
-          results.push({ sourceRow: row, skipped: true, reason: 'Interest payment' });
-          continue; // Skip to next row
-          // If importing interest: 
-          // transactionData = { timestamp, type: 'deposit', // Assuming a deposit type exists
-          //                   amount, asset, notes: 'Interest payment', wallet: 'River' }; 
-          // break;
-
-        default:
-          // Skip unknown tags
-          results.push({ sourceRow: row, skipped: true, reason: `Unknown tag: ${tag}` });
-          continue; // Skip to next row
+      if (tag === 'Buy') {
+          if (recvCurrency !== 'BTC' || sentCurrency !== 'USD' || recvAmt <= 0) {
+             throw new Error("Invalid data for Buy tag");
+          }
+          const amount = recvAmt;
+          const priceUsd = sentAmt / amount;
+          transactionData = { 
+            timestamp, type: 'buy', amount, asset: 'BTC', 
+            price: priceUsd, priceAsset: 'USD', 
+            fee: feeAmt > 0 ? feeAmt : undefined, feeAsset: feeAmt > 0 ? feeCurrency : undefined, 
+            wallet: 'River' 
+          };
+      } else if (tag === 'Sell') {
+          if (sentCurrency !== 'BTC' || recvCurrency !== 'USD' || sentAmt <= 0) {
+             throw new Error("Invalid data for Sell tag");
+          }
+          const amount = sentAmt;
+          const priceUsd = recvAmt / amount;
+          transactionData = { 
+            timestamp, type: 'sell', amount, asset: 'BTC', 
+            price: priceUsd, priceAsset: 'USD', 
+            fee: feeAmt > 0 ? feeAmt : undefined, feeAsset: feeAmt > 0 ? feeCurrency : undefined, 
+            wallet: 'River' 
+          };
+      } else if (tag === 'Interest') {
+          if (recvAmt <= 0 || !recvCurrency) {
+              throw new Error("Invalid data for Interest tag");
+          }
+          transactionData = { 
+            timestamp, type: 'deposit', // Treat Interest as deposit
+            amount: recvAmt, asset: recvCurrency, 
+            notes: 'Interest payment', 
+            wallet: 'River', 
+            // Price/Fee likely not applicable for interest
+            price: undefined, priceAsset: undefined,
+            fee: undefined, feeAsset: undefined 
+          };
+      } else {
+          // Handle potential Deposits/Withdrawals based on amount columns if tag is unknown/empty
+          if (recvAmt > 0 && sentAmt === 0) { // DEPOSIT pattern
+              if (!recvCurrency) throw new Error("Missing Received Currency for Deposit");
+              transactionData = { 
+                timestamp, type: 'deposit',
+                amount: recvAmt, asset: recvCurrency, 
+                wallet: 'River', notes: 'Deposit (River)',
+                // Price/Fee likely not applicable 
+                price: undefined, priceAsset: undefined,
+                fee: feeAmt > 0 ? feeAmt : undefined, feeAsset: feeAmt > 0 ? feeCurrency : undefined // Include fee if present
+              };
+          } else if (sentAmt > 0 && recvAmt === 0) { // WITHDRAWAL pattern
+              if (!sentCurrency) throw new Error("Missing Sent Currency for Withdrawal");
+              transactionData = { 
+                timestamp, type: 'withdrawal', 
+                amount: sentAmt, asset: sentCurrency, 
+                wallet: 'River', notes: 'Withdrawal (River)',
+                 // Price likely not applicable 
+                price: undefined, priceAsset: undefined,
+                fee: feeAmt > 0 ? feeAmt : undefined, feeAsset: feeAmt > 0 ? feeCurrency : undefined // Include fee if present
+              };
+          } else {
+              // If it doesn't match Buy/Sell/Interest or Deposit/Withdrawal patterns, skip it
+              skipReason = `Skipping row: Unhandled tag '${tag}' or ambiguous amounts (Sent: ${sentAmt}, Received: ${recvAmt})`;
+          }
       }
       
-      // Add successful transaction to results
-      results.push({ sourceRow: row, data: transactionData });
+      // Add successful transaction or skipped row to results
+      if (transactionData) {
+          results.push({ sourceRow: row, data: transactionData });
+      } else {
+          results.push({ sourceRow: row, skipped: true, reason: skipReason ?? "Row did not match known patterns" });
+      }
 
     } catch (error) {
       // Handle errors for specific rows

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -31,6 +31,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Define ProcessedTransaction with optional/undefined decryptionError
 type ProcessedTransaction = Transaction & {
@@ -38,21 +46,53 @@ type ProcessedTransaction = Transaction & {
 };
 
 // Define fetcher for useSWR
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+const fetcher = (url: string) => fetch(url).then(res => {
+  if (!res.ok) {
+    // You might want more sophisticated error handling here
+    throw new Error(`An error occurred while fetching the data: ${res.statusText}`);
+  }
+  return res.json();
+});
 
 export default function TransactionsPage() {
   // Restore page-level state and logic
   const { openDialog: openAddTransactionDialog } = useDialog();
   const { openDialog: openEditDialog, closeDialog } = useDialog(); // Use separate name for clarity
   const { confirmAlertDelete } = useAlerts();
+  
+  // --- Add Filter State --- 
+  const [typeFilter, setTypeFilter] = useState<"all" | "buy" | "sell" | "deposit" | "withdrawal">("all");
+  const [minValue, setMinValue] = useState<string>("");
+  const [maxValue, setMaxValue] = useState<string>("");
+  // ----------------------
+
+  // --- Construct Filtered URL ---
+  const constructApiUrl = () => {
+    const params = new URLSearchParams();
+    if (typeFilter !== "all") {
+      params.append('type', typeFilter);
+    }
+    if (minValue) {
+      params.append('minValue', minValue);
+    }
+    if (maxValue) {
+      params.append('maxValue', maxValue);
+    }
+    const queryString = params.toString();
+    return `/api/transactions${queryString ? '?' + queryString : ''}`;
+  };
+  const apiUrl = constructApiUrl();
+  // -----------------------------
+  
+  // Use dynamic apiUrl for useSWR
   const { data: rawTransactions, error: swrError, isLoading: swrLoading, mutate: mutateTransactions } = 
-    useSWR<Transaction[]>("/api/transactions", fetcher);
+    useSWR<Transaction[]>(apiUrl, fetcher);
   const { encryptionKey, isLoadingKey, isKeySet } = useEncryption();
   const [processedTransactions, setProcessedTransactions] = useState<ProcessedTransaction[]>([]);
   const [isProcessing, setIsProcessing] = useState(false); 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-  // Restore Decryption logic here
+  // Decryption useEffect (keep as is)
   useEffect(() => {
     const processAndDecrypt = async () => {
        if (!rawTransactions || !isKeySet || !encryptionKey) { setProcessedTransactions([]); return; }
@@ -75,6 +115,38 @@ export default function TransactionsPage() {
     };
     processAndDecrypt();
   }, [rawTransactions, encryptionKey, isKeySet]);
+
+  // --- Client-Side Filtering Logic ---
+  const filteredTransactions = useMemo(() => {
+    return processedTransactions.filter(tx => {
+      // Ensure transaction is decrypted before filtering on potentially encrypted fields
+      if (!tx.isDecrypted) {
+        // Decide how to handle undecrypted - include or exclude?
+        // Excluding them seems safer for filtering consistency.
+        return false; 
+      }
+
+      // Type Filter
+      if (typeFilter !== 'all' && tx.type !== typeFilter) {
+        return false;
+      }
+
+      // Min Value (Price) Filter - check if price exists
+      if (minValue && (typeof tx.price !== 'number' || tx.price < parseFloat(minValue))) {
+        return false;
+      }
+
+      // Max Value (Price) Filter - check if price exists
+      if (maxValue && (typeof tx.price !== 'number' || tx.price > parseFloat(maxValue))) {
+        return false;
+      }
+      
+      // Add other client-side filters here (e.g., date range, wallet)
+
+      return true; // Include transaction if all filters pass
+    });
+  }, [processedTransactions, typeFilter, minValue, maxValue]);
+  // -----------------------------------
 
   // Restore Handlers here
   const handleAddTransaction = () => {
@@ -115,12 +187,17 @@ export default function TransactionsPage() {
   // Restore loading/error states
   if (!isKeySet) return <PassphrasePrompt sampleEncryptedData={rawTransactions?.find(tx => tx.encryptedData)?.encryptedData} />;
   if (swrError) return <div>Failed to load transactions data. Please try again.</div>;
+  // Show loading if SWR is loading OR if decrypting and no processed data yet
   if (swrLoading || (isProcessing && processedTransactions.length === 0)) return <Spinner />;
-  // Use processedTransactions for empty check after potential decryption
-  if (!isProcessing && processedTransactions.length === 0 && rawTransactions && rawTransactions.length === 0) 
-      return <div className="text-center text-muted-foreground py-8">No transactions found.</div>;
-  if (!isKeySet && processedTransactions.length === 0) 
-      return <div className="text-center text-muted-foreground py-8">Enter passphrase to view details.</div>; // Or handle differently
+  // Show "No transactions" only if not loading/processing AND raw data was empty OR filtered data is empty
+  const showNoTransactions = !isProcessing && 
+                              ((rawTransactions && rawTransactions.length === 0) || 
+                               (processedTransactions.length > 0 && filteredTransactions.length === 0));
+  if (showNoTransactions) 
+      return <div className="text-center text-muted-foreground py-8">No transactions found{typeFilter !== 'all' || minValue || maxValue ? ' matching filters' : ''}.</div>;
+  // Show passphrase prompt if key not set and raw data exists but not processed
+  if (!isKeySet && processedTransactions.length === 0 && rawTransactions && rawTransactions.length > 0) 
+      return <div className="text-center text-muted-foreground py-8">Enter passphrase to view details.</div>;
 
   return (
     <div className="container py-8 space-y-6">
@@ -132,9 +209,51 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Render the new table component, passing data and handlers */}
+      {/* === ADD FILTER CONTROLS HERE === */}
+      <div className="flex flex-wrap items-center gap-4 p-4 bg-card border rounded-lg">
+        <span className="font-medium text-sm">Filters:</span>
+        <Select
+          value={typeFilter}
+          onValueChange={(v) => setTypeFilter(v as any)} // Cast needed for 'all' initially
+        >
+          <SelectTrigger className="w-auto min-w-[100px] h-9 text-sm">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="buy">Buy</SelectItem>
+            <SelectItem value="sell">Sell</SelectItem>
+            <SelectItem value="deposit">Deposit</SelectItem>      {/* Add other types if needed */}
+            <SelectItem value="withdrawal">Withdrawal</SelectItem>  {/* Add other types if needed */}
+          </SelectContent>
+        </Select>
+
+        <Input
+          type="number"
+          placeholder="Min Price ($)" // Assuming filtering by price
+          value={minValue}
+          onChange={(e) => setMinValue(e.target.value)}
+          className="w-auto min-w-[120px] h-9 text-sm"
+          step="any"
+          min="0"
+        />
+        <span className="text-muted-foreground">-</span>
+        <Input
+          type="number"
+          placeholder="Max Price ($)" // Assuming filtering by price
+          value={maxValue}
+          onChange={(e) => setMaxValue(e.target.value)}
+          className="w-auto min-w-[120px] h-9 text-sm"
+          step="any"
+          min="0"
+        />
+        {/* Optional: Add Apply button if needed: <Button onClick={() => mutateTransactions()} size="sm">Apply</Button> */}
+      </div>
+      {/* ============================= */}
+
+      {/* Render the table component, passing FILTERED data */}
       <TransactionsTable 
-         transactions={processedTransactions}
+         transactions={filteredTransactions} // Pass filtered data
          onEdit={handleEdit}
          onDelete={handleDelete}
       />

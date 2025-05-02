@@ -19,6 +19,14 @@ import {
   ReceiptText,
 } from "lucide-react";
 import Link from "next/link";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { useBitcoinPrice } from '@/hooks/useBitcoinPrice';
 import { formatUSD } from '@/lib/price';
@@ -43,8 +51,33 @@ export function DashboardClient() {
   const { price: bitcoinPrice, lastUpdated, loading: priceLoading } = useBitcoinPrice();
   const router = useRouter();
   const { openDialog: openAddTransactionDialog } = useDialog();
+  
+  // --- Filter State ---
+  const [typeFilter, setTypeFilter] = useState<"all" | "buy" | "sell" | "deposit" | "withdrawal">("all");
+  const [minValue, setMinValue] = useState<string>("");
+  const [maxValue, setMaxValue] = useState<string>("");
+  // --------------------
+  
+  // --- Construct Filtered URL ---
+  const constructApiUrl = () => {
+    const params = new URLSearchParams();
+    if (typeFilter !== "all") {
+      params.append('type', typeFilter);
+    }
+    if (minValue) {
+      params.append('minValue', minValue);
+    }
+    if (maxValue) {
+      params.append('maxValue', maxValue);
+    }
+    const queryString = params.toString();
+    return `/api/transactions${queryString ? '?' + queryString : ''}`;
+  };
+  const apiUrl = constructApiUrl();
+  // -----------------------------
+
   const { data: rawTransactions, error: transactionsError, isLoading: transactionsLoading, mutate: mutateTransactions } = 
-    useSWR<Transaction[]>('/api/transactions', fetcher);
+    useSWR<Transaction[]>(apiUrl, fetcher);
   
   // --- Log Raw Data ---
   console.log("[Raw API Data]:", rawTransactions);
@@ -172,6 +205,11 @@ export function DashboardClient() {
 
   const handleViewAllTransactions = () => {
     router.push('/transactions');
+  };
+
+  // Function to manually trigger refetch (used by Apply button)
+  const handleApplyFilters = () => {
+    mutateTransactions(); // SWR revalidates with the current apiUrl
   };
 
   const shouldShowPercentage = (value: number) => value !== 0;
@@ -382,6 +420,47 @@ export function DashboardClient() {
             </div>
           </Card>
         </div>
+
+        {/* === FILTER CONTROLS === */}
+        <div className="flex flex-wrap items-center gap-4 p-4 bg-card border rounded-lg">
+          <span className="font-medium text-sm">Filters:</span>
+          <Select
+            value={typeFilter}
+            onValueChange={(v) => setTypeFilter(v as any)}
+          >
+            <SelectTrigger className="w-auto min-w-[100px] h-9 text-sm">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="buy">Buy</SelectItem>
+              <SelectItem value="sell">Sell</SelectItem>
+              <SelectItem value="deposit">Deposit</SelectItem>
+              <SelectItem value="withdrawal">Withdrawal</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Input
+            type="number"
+            placeholder="Min Price ($)"
+            value={minValue}
+            onChange={(e) => setMinValue(e.target.value)}
+            className="w-auto min-w-[120px] h-9 text-sm"
+            step="any"
+            min="0"
+          />
+          <span className="text-muted-foreground">-</span>
+          <Input
+            type="number"
+            placeholder="Max Price ($)"
+            value={maxValue}
+            onChange={(e) => setMaxValue(e.target.value)}
+            className="w-auto min-w-[120px] h-9 text-sm"
+            step="any"
+            min="0"
+          />
+        </div>
+        {/* ======================= */}
       </div>
 
       <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
@@ -402,4 +481,9 @@ export function DashboardClient() {
   );
 }
 
-const fetcher = (url: string) => fetch(url).then(res => res.json()); 
+const fetcher = (url: string) => fetch(url).then(res => {
+  if (!res.ok) {
+    throw new Error(`An error occurred while fetching the data: ${res.statusText}`);
+  }
+  return res.json();
+}); 

@@ -72,17 +72,6 @@ function validateRequiredFields(row: StrikeRawRow): { isValid: boolean; error?: 
     return { isValid: true };
 }
 
-function mapType(strikeType: string): 'buy' | 'sell' | null {
-    switch (strikeType) {
-        case 'Trade': return null;
-        case 'Deposit': return null;
-        case 'Withdrawal': return null;
-        case 'Onchain': return null;
-        case 'Lightning': return null;
-        default: return null;
-    }
-}
-
 function parseAmount(currency: string | null, value: number | null): { value: number; currency: string } {
     if (currency && typeof value === 'number') {
         return { value: Math.abs(value), currency };
@@ -109,62 +98,62 @@ export function processStrikeCsv(rows: Record<string, any>[]): ProcessedImport[]
   const results: ProcessedImport[] = [];
   const tradesById: Record<string, StrikeRawRow[]> = {};
 
-  // --- Phase 1: Filter, Group Trades, Process Non-Trades --- 
+  // --- Phase 1: Filter, Group Trades, Process Other Types --- 
   for (const row of rows as StrikeRawRow[]) { // Cast rows for easier access
     try {
         const validation = validateRequiredFields(row);
         if (!validation.isValid) {
-            results.push({ sourceRow: row, error: validation.error, skipped: true });
+            results.push({ sourceRow: row, error: validation.error, skipped: true, reason: validation.error });
             continue;
         }
 
-        // Filter by State
+        // Filter by State - Common check for all types we might process
         if (row.State !== 'Completed') {
-            results.push({ sourceRow: row, skipped: true, reason: 'State not Completed' });
+            results.push({ sourceRow: row, skipped: true, reason: `State is ${row.State}, not Completed` });
             continue;
         }
         
-        // Group Trade rows by Transaction ID
-        if (row['Transaction Type'] === 'Trade') {
+        const transactionType = row['Transaction Type'];
+
+        // --- Handle different transaction types --- 
+
+        if (transactionType === 'Trade') {
+            // Group Trade rows for later processing
             const txId = row['Transaction ID'];
             if (!tradesById[txId]) {
                 tradesById[txId] = [];
             }
             tradesById[txId].push(row);
-        } else {
-            // Process non-trade types immediately
-            const type = mapType(row['Transaction Type']);
-            if (!type) {
-                // Skip types not handled by mapType (e.g., Onchain, Lightning, unknown)
-                results.push({ sourceRow: row, skipped: true, reason: `Skipping type: ${row['Transaction Type']}` });
-                continue;
-            }
-
+        
+        } else if (transactionType === 'Deposit' || transactionType === 'Withdrawal') {
+            // Explicitly skip Deposit/Withdrawal types as requested
+            results.push({ sourceRow: row, skipped: true, reason: `Skipping type: ${transactionType}` });
+            continue;
+        
+        } else if (transactionType === 'Onchain') {
+            // Process Onchain transactions
             const timestamp = parseStrikeTimestamp(row['Completed Date (UTC)'], row['Completed Time (UTC)']);
             if (!timestamp) {
-                results.push({ sourceRow: row, error: "Invalid completion timestamp", skipped: true });
+                results.push({ sourceRow: row, error: "Invalid completion timestamp for Onchain tx", skipped: true });
                 continue;
             }
 
-            // Determine amount/asset for deposits/withdrawals (adjust logic as needed)
-            let amount = 0;
-            let asset = '';
-            if (row['Currency 1'] && row['Amount 1']) {
-                amount = Math.abs(row['Amount 1']);
-                asset = row['Currency 1'];
-            } else if (row['Currency 2'] && row['Amount 2']) {
-                 amount = Math.abs(row['Amount 2']);
-                 asset = row['Currency 2'];
-            }
-            
-            if (amount === 0 || !asset) {
-                 results.push({ sourceRow: row, error: "Could not determine amount/asset for non-trade", skipped: true });
-                 continue;
+            const amount2 = row['Amount 2'];
+            const currency2 = row['Currency 2'];
+
+            if (currency2 !== 'BTC' || typeof amount2 !== 'number' || amount2 === 0) {
+                results.push({ sourceRow: row, skipped: true, reason: `Onchain tx skipped: Invalid BTC amount/currency (Amount: ${amount2}, Currency: ${currency2})` });
+                continue;
             }
 
-            const feeCurrency = row['Fee 1'] ? (row['Currency 1'] ?? null) : null;
-            const feeValue = row['Fee 1'] ?? null;
-            const fee = parseFee(feeCurrency, feeValue);
+            const type: 'deposit' | 'withdrawal' = amount2 > 0 ? 'deposit' : 'withdrawal';
+            const amount = Math.abs(amount2);
+            const asset = 'BTC'; // Asset is BTC for Onchain
+
+            // Attempt to parse fee (usually from Amount/Currency 1 for Onchain sends)
+            const feeCurrency = row['Currency 1']; // Check Currency 1 for fee
+            const feeValue = row['Fee 1'] ?? row['Amount 1']; // Fee might be in Fee 1 or reflected in Amount 1
+            const fee = parseFee(feeCurrency, typeof feeValue === 'number' ? feeValue : null);
 
             results.push({
                 sourceRow: row,
@@ -174,12 +163,22 @@ export function processStrikeCsv(rows: Record<string, any>[]): ProcessedImport[]
                     amount,
                     asset,
                     fee: fee.value,
-                    feeAsset: fee.currency,
+                    feeAsset: fee.currency, 
                     wallet: 'Strike',
-                    exchangeTxId: row['Transaction ID']
+                    notes: 'Onchain Transfer', // Add a note
+                    exchangeTxId: row['Transaction ID'],
+                    // Price is not applicable for direct BTC transfers
+                    price: undefined,
+                    priceAsset: undefined,
                 }
             });
+        
+        } else {
+            // Skip other types like Lightning, P2P, etc.
+            results.push({ sourceRow: row, skipped: true, reason: `Skipping type: ${transactionType}` });
+            continue;
         }
+
     } catch (error) {
         results.push({ sourceRow: row, error: error instanceof Error ? error.message : "Unknown row processing error", skipped: true });
     }
