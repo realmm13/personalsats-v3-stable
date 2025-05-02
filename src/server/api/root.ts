@@ -7,6 +7,7 @@ import { adminRouter } from "./routers/admin";
 import { taxRouter } from "./routers/tax";
 import { priceRouter } from "./routers/price";
 import { userSettingsRouter } from "./routers/userSettings";
+import { transactionsRouter } from "./routers/transactions";
 
 /**
  * This is the primary router for your server.
@@ -22,6 +23,7 @@ export const appRouter = createTRPCRouter({
   tax: taxRouter,
   price: priceRouter,
   userSettings: userSettingsRouter,
+  transactions: transactionsRouter,
 });
 
 export type AppRouter = typeof appRouter;

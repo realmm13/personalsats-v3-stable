@@ -39,6 +39,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
+import { api } from "@/trpc/react";
 
 // Define ProcessedTransaction with optional/undefined decryptionError
 type ProcessedTransaction = Transaction & {
@@ -55,44 +66,40 @@ const fetcher = (url: string) => fetch(url).then(res => {
 });
 
 export default function TransactionsPage() {
-  // Restore page-level state and logic
+  // --- Hooks ---
   const { openDialog: openAddTransactionDialog } = useDialog();
-  const { openDialog: openEditDialog, closeDialog } = useDialog(); // Use separate name for clarity
+  const { openDialog: openEditDialog, closeDialog } = useDialog();
   const { confirmAlertDelete } = useAlerts();
-  
-  // --- Add Filter State --- 
-  const [typeFilter, setTypeFilter] = useState<"all" | "buy" | "sell" | "deposit" | "withdrawal">("all");
-  const [minValue, setMinValue] = useState<string>("");
-  const [maxValue, setMaxValue] = useState<string>("");
-  // ----------------------
-
-  // --- Construct Filtered URL ---
-  const constructApiUrl = () => {
-    const params = new URLSearchParams();
-    if (typeFilter !== "all") {
-      params.append('type', typeFilter);
-    }
-    if (minValue) {
-      params.append('minValue', minValue);
-    }
-    if (maxValue) {
-      params.append('maxValue', maxValue);
-    }
-    const queryString = params.toString();
-    return `/api/transactions${queryString ? '?' + queryString : ''}`;
-  };
-  const apiUrl = constructApiUrl();
-  // -----------------------------
-  
-  // Use dynamic apiUrl for useSWR
-  const { data: rawTransactions, error: swrError, isLoading: swrLoading, mutate: mutateTransactions } = 
-    useSWR<Transaction[]>(apiUrl, fetcher);
   const { encryptionKey, isLoadingKey, isKeySet } = useEncryption();
+  const clearAllMutation = api.transactions.clearAll.useMutation();
+
+  // --- State ---
+  const [typeFilter, setTypeFilter] = useState<"all" | "buy" | "sell" | "deposit" | "withdrawal">("all");
+  const [minAmount, setMinAmount] = useState<string>(""); 
+  const [minAmountInput, setMinAmountInput] = useState<string>("");
+  const [maxAmount, setMaxAmount] = useState<string>(""); 
+  const [maxAmountInput, setMaxAmountInput] = useState<string>(""); 
   const [processedTransactions, setProcessedTransactions] = useState<ProcessedTransaction[]>([]);
   const [isProcessing, setIsProcessing] = useState(false); 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
-  // Decryption useEffect (keep as is)
+  // --- Debounce Min/Max Amount --- 
+  useEffect(() => {
+    const minHandler = setTimeout(() => { setMinAmount(minAmountInput); }, 500); 
+    const maxHandler = setTimeout(() => { setMaxAmount(maxAmountInput); }, 500);
+    return () => { 
+        clearTimeout(minHandler); 
+        clearTimeout(maxHandler); 
+    };
+  }, [minAmountInput, maxAmountInput]);
+  
+  // --- Fetch Data --- 
+  const apiUrl = "/api/transactions"; // API fetches all, filtering is client-side
+  const { data: rawTransactions, error: swrError, isLoading: swrLoading, mutate: mutateTransactions } = 
+    useSWR<Transaction[]>(apiUrl, fetcher);
+
+  // --- Decryption Effect ---
   useEffect(() => {
     const processAndDecrypt = async () => {
        if (!rawTransactions || !isKeySet || !encryptionKey) { setProcessedTransactions([]); return; }
@@ -116,41 +123,20 @@ export default function TransactionsPage() {
     processAndDecrypt();
   }, [rawTransactions, encryptionKey, isKeySet]);
 
-  // --- Client-Side Filtering Logic ---
+  // --- Client-Side Filtering --- 
   const filteredTransactions = useMemo(() => {
     return processedTransactions.filter(tx => {
-      // Ensure transaction is decrypted before filtering on potentially encrypted fields
-      if (!tx.isDecrypted) {
-        // Decide how to handle undecrypted - include or exclude?
-        // Excluding them seems safer for filtering consistency.
-        return false; 
-      }
-
-      // Type Filter
-      if (typeFilter !== 'all' && tx.type !== typeFilter) {
-        return false;
-      }
-
-      // Min Value (Price) Filter - check if price exists
-      if (minValue && (typeof tx.price !== 'number' || tx.price < parseFloat(minValue))) {
-        return false;
-      }
-
-      // Max Value (Price) Filter - check if price exists
-      if (maxValue && (typeof tx.price !== 'number' || tx.price > parseFloat(maxValue))) {
-        return false;
-      }
-      
-      // Add other client-side filters here (e.g., date range, wallet)
-
-      return true; // Include transaction if all filters pass
+      if (!tx.isDecrypted) return false;
+      if (typeFilter !== 'all' && tx.type !== typeFilter) return false;
+      if (minAmount && (typeof tx.amount !== 'number' || tx.amount < parseFloat(minAmount))) return false;
+      if (maxAmount && (typeof tx.amount !== 'number' || tx.amount > parseFloat(maxAmount))) return false;
+      return true; 
     });
-  }, [processedTransactions, typeFilter, minValue, maxValue]);
-  // -----------------------------------
+  }, [processedTransactions, typeFilter, minAmount, maxAmount]); 
 
-  // Restore Handlers here
+  // --- Handlers ---
   const handleAddTransaction = () => {
-    openAddTransactionDialog({ /* ... add dialog config ... */ title: "Add Transaction", component: AddTransactionForm, props: { onSuccess: () => mutateTransactions() } });
+    openAddTransactionDialog({ title: "Add Transaction", component: AddTransactionForm, props: { onSuccess: () => mutateTransactions() } });
   };
   const handleOpenImportModal = () => { setIsImportModalOpen(true); };
   const handleCloseImportModal = () => { setIsImportModalOpen(false); };
@@ -165,100 +151,145 @@ export default function TransactionsPage() {
   };
   
   const handleDelete = (id: string) => {
-    const originalTransactions = [...processedTransactions]; // Use state here
+    const originalTransactions = [...processedTransactions]; 
     confirmAlertDelete({
       title: "Delete Transaction", description: "Are you sure? This cannot be undone.",
       onConfirm: async () => {
-        // Optimistic UI update on page state
         setProcessedTransactions(currentTxs => currentTxs.filter(tx => tx.id !== id));
         try {
           const response = await fetch(`/api/transactions/${id}`, { method: "DELETE" });
           if (!response.ok) { const errorData = await response.json().catch(() => ({})); throw new Error(errorData.error || "Failed on server"); }
           toast.success("Transaction deleted!");
-          // No need to call mutate if optimistic update is sufficient
         } catch (error) {
-          setProcessedTransactions(originalTransactions); // Revert on error
+          setProcessedTransactions(originalTransactions); 
           toast.error(error instanceof Error ? error.message : "Could not delete.");
         }
       },
     });
   };
 
-  // Restore loading/error states
+  const handleClearAllConfirm = async () => {
+    try {
+      toast.info("Clearing all transactions...");
+      await clearAllMutation.mutateAsync();
+      toast.success("All transactions cleared successfully!");
+      mutateTransactions(); 
+    } catch (error) {
+      console.error("Clear all failed:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to clear all transactions.");
+    }
+    setConfirmClearOpen(false);
+  };
+
+  // --- Loading / Error / Empty States ---
   if (!isKeySet) return <PassphrasePrompt sampleEncryptedData={rawTransactions?.find(tx => tx.encryptedData)?.encryptedData} />;
-  if (swrError) return <div>Failed to load transactions data. Please try again.</div>;
-  // Show loading if SWR is loading OR if decrypting and no processed data yet
-  if (swrLoading || (isProcessing && processedTransactions.length === 0)) return <Spinner />;
-  // Show "No transactions" only if not loading/processing AND raw data was empty OR filtered data is empty
+  if (swrError) return <div className="text-center text-muted-foreground py-8">Failed to load transactions data. Please try again.</div>; // Centered error
+  if (swrLoading || (isProcessing && processedTransactions.length === 0)) return <div className="flex justify-center py-8"><Spinner size="lg"/></div>; // Centered spinner
   const showNoTransactions = !isProcessing && 
-                              ((rawTransactions && rawTransactions.length === 0) || 
+                              ((!rawTransactions || rawTransactions.length === 0) || 
                                (processedTransactions.length > 0 && filteredTransactions.length === 0));
   if (showNoTransactions) 
-      return <div className="text-center text-muted-foreground py-8">No transactions found{typeFilter !== 'all' || minValue || maxValue ? ' matching filters' : ''}.</div>;
-  // Show passphrase prompt if key not set and raw data exists but not processed
+      return (
+          <div className="container py-8 space-y-6">
+             {/* Render header and filters even when empty */} 
+             <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-bold">Transactions</h1>
+                <div className="flex items-center space-x-2">
+                    {/* Buttons... */} 
+                    <CustomButton onClick={handleOpenImportModal} leftIcon={Upload} variant="outline" size="sm">Import from File</CustomButton>
+                    <CustomButton onClick={handleAddTransaction} leftIcon={Plus} variant="filled" color="primary" size="sm">Add Transaction</CustomButton>
+                    <CustomButton variant="outline" color="destructive" size="sm" onClick={() => setConfirmClearOpen(true)} loading={clearAllMutation.isPending} leftIcon={Trash2}>
+                        Clear All
+                    </CustomButton>
+                </div>
+             </div>
+             <div className="flex flex-wrap items-center gap-4 p-4 bg-card border rounded-lg">
+                 {/* Filter controls... */} 
+                 <span className="font-medium text-sm">Filters:</span>
+                 <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)} >
+                    <SelectTrigger className="w-auto min-w-[100px] h-9 text-sm"><SelectValue placeholder="Type" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        <SelectItem value="buy">Buy</SelectItem>
+                        <SelectItem value="sell">Sell</SelectItem>
+                        <SelectItem value="deposit">Deposit</SelectItem>
+                        <SelectItem value="withdrawal">Withdrawal</SelectItem>
+                    </SelectContent>
+                 </Select>
+                 <Input type="number" placeholder="Min Amount (BTC)" value={minAmountInput} onChange={(e) => setMinAmountInput(e.target.value)} className="w-auto min-w-[140px] h-9 text-sm" step="any" min="0" />
+                 <span className="text-muted-foreground">-</span>
+                 <Input type="number" placeholder="Max Amount (BTC)" value={maxAmountInput} onChange={(e) => setMaxAmountInput(e.target.value)} className="w-auto min-w-[140px] h-9 text-sm" step="any" min="0" />
+             </div>
+            {/* The actual empty message */} 
+            <div className="text-center text-muted-foreground py-8">No transactions found{typeFilter !== 'all' || minAmount || maxAmount ? ' matching filters' : ''}.</div>
+            {/* Clear All Dialog needs to be rendered here too */} 
+             <AlertDialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
+                <AlertDialogContent>
+                   <AlertDialogHeader>
+                     <AlertDialogTitle>Clear ALL Transactions?</AlertDialogTitle>
+                     <AlertDialogDescription>
+                       This will permanently delete every transaction and related tax data (lots, allocations) in your account. This action cannot be undone.
+                     </AlertDialogDescription>
+                   </AlertDialogHeader>
+                   <AlertDialogFooter>
+                     <AlertDialogCancel>Cancel</AlertDialogCancel>
+                     <AlertDialogAction 
+                       onClick={handleClearAllConfirm} 
+                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                       disabled={clearAllMutation.isPending} 
+                     >
+                       {clearAllMutation.isPending ? <Spinner size="sm" /> : "Yes, Clear All"}
+                     </AlertDialogAction>
+                   </AlertDialogFooter>
+                 </AlertDialogContent>
+             </AlertDialog>
+          </div>
+       );
   if (!isKeySet && processedTransactions.length === 0 && rawTransactions && rawTransactions.length > 0) 
       return <div className="text-center text-muted-foreground py-8">Enter passphrase to view details.</div>;
 
+  // --- Main Render --- 
   return (
     <div className="container py-8 space-y-6">
+      {/* Header */} 
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Transactions</h1>
         <div className="flex items-center space-x-2">
           <CustomButton onClick={handleOpenImportModal} leftIcon={Upload} variant="outline" size="sm">Import from File</CustomButton>
           <CustomButton onClick={handleAddTransaction} leftIcon={Plus} variant="filled" color="primary" size="sm">Add Transaction</CustomButton>
+          <CustomButton variant="outline" color="destructive" size="sm" onClick={() => setConfirmClearOpen(true)} loading={clearAllMutation.isPending} leftIcon={Trash2}>
+            Clear All
+          </CustomButton>
         </div>
       </div>
 
-      {/* === ADD FILTER CONTROLS HERE === */}
+      {/* Filters */} 
       <div className="flex flex-wrap items-center gap-4 p-4 bg-card border rounded-lg">
         <span className="font-medium text-sm">Filters:</span>
-        <Select
-          value={typeFilter}
-          onValueChange={(v) => setTypeFilter(v as any)} // Cast needed for 'all' initially
-        >
-          <SelectTrigger className="w-auto min-w-[100px] h-9 text-sm">
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="buy">Buy</SelectItem>
-            <SelectItem value="sell">Sell</SelectItem>
-            <SelectItem value="deposit">Deposit</SelectItem>      {/* Add other types if needed */}
-            <SelectItem value="withdrawal">Withdrawal</SelectItem>  {/* Add other types if needed */}
-          </SelectContent>
+        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)} >
+            <SelectTrigger className="w-auto min-w-[100px] h-9 text-sm"><SelectValue placeholder="Type" /></SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="buy">Buy</SelectItem>
+                <SelectItem value="sell">Sell</SelectItem>
+                <SelectItem value="deposit">Deposit</SelectItem>
+                <SelectItem value="withdrawal">Withdrawal</SelectItem>
+            </SelectContent>
         </Select>
-
-        <Input
-          type="number"
-          placeholder="Min Price ($)" // Assuming filtering by price
-          value={minValue}
-          onChange={(e) => setMinValue(e.target.value)}
-          className="w-auto min-w-[120px] h-9 text-sm"
-          step="any"
-          min="0"
-        />
+        <Input type="number" placeholder="Min Amount (BTC)" value={minAmountInput} onChange={(e) => setMinAmountInput(e.target.value)} className="w-auto min-w-[140px] h-9 text-sm" step="any" min="0" />
         <span className="text-muted-foreground">-</span>
-        <Input
-          type="number"
-          placeholder="Max Price ($)" // Assuming filtering by price
-          value={maxValue}
-          onChange={(e) => setMaxValue(e.target.value)}
-          className="w-auto min-w-[120px] h-9 text-sm"
-          step="any"
-          min="0"
-        />
-        {/* Optional: Add Apply button if needed: <Button onClick={() => mutateTransactions()} size="sm">Apply</Button> */}
+        <Input type="number" placeholder="Max Amount (BTC)" value={maxAmountInput} onChange={(e) => setMaxAmountInput(e.target.value)} className="w-auto min-w-[140px] h-9 text-sm" step="any" min="0" />
       </div>
-      {/* ============================= */}
 
-      {/* Render the table component, passing FILTERED data */}
+      {/* Table */} 
       <TransactionsTable 
-         transactions={filteredTransactions} // Pass filtered data
+         transactions={filteredTransactions} 
          onEdit={handleEdit}
          onDelete={handleDelete}
+         onBulkActionComplete={mutateTransactions}
       />
 
-      {/* Keep Import Dialog rendering */}
+      {/* Dialogs */} 
       <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
         <DialogContent className="sm:max-w-xl overflow-y-auto">
           <DialogHeader><DialogTitle>Import Transactions from CSV</DialogTitle></DialogHeader>
@@ -270,6 +301,26 @@ export default function TransactionsPage() {
           />
         </DialogContent>
       </Dialog>
+      <AlertDialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
+         <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear ALL Transactions?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete every transaction and related tax data (lots, allocations) in your account. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleClearAllConfirm} 
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={clearAllMutation.isPending} 
+              >
+                {clearAllMutation.isPending ? <Spinner size="sm" /> : "Yes, Clear All"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 } 
