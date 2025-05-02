@@ -19,7 +19,8 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "contentlayer/generated": [".contentlayer/generated"]
     }
   },
   "include": [

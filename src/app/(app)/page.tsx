@@ -7,7 +7,7 @@ import PortfolioLineChart from "./_components/PortfolioLineChart";
 import TransactionList from "./_components/TransactionList";
 import { Spinner } from "@/components/Spinner";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Users, CreditCard, Clock, PlusIcon, Upload } from "lucide-react";
+import { BarChart3, Users, CreditCard, Clock, PlusIcon, Upload, ReceiptText } from "lucide-react";
 import Link from "next/link";
 
 interface Stats {
@@ -82,28 +82,28 @@ export default function AppPage() {
 
   const cards = [
     {
-      title: "Total Revenue",
+      title: "Total Revenue", // Note: These titles seem like placeholders, update if needed
       value: `$${stats.totalValue.toLocaleString()}`,
       delta: "+20.1%",
       subtitle: "Compared to last month",
       icon: <BarChart3 className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: "Subscriptions",
+      title: "Subscriptions", // Placeholder
       value: "+2,350",
       delta: "+10.5%",
       subtitle: "New subscribers this week",
       icon: <Users className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: "Sales",
+      title: "Sales", // Placeholder
       value: "+12,234",
       delta: "+15.3%",
       subtitle: "Total sales this month",
       icon: <CreditCard className="h-4 w-4 text-muted-foreground" />,
     },
     {
-      title: "Active Users",
+      title: "Active Users", // Placeholder
       value: "+573",
       delta: "+5.2%",
       subtitle: "Currently active users",
@@ -153,13 +153,13 @@ export default function AppPage() {
         ))}
       </div>
 
-      {/* ADD QUICK ACTIONS SECTION HERE */}
+      {/* Quick Actions */}
       <section>
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"> {/* Adjust columns as needed */} 
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full">
           {/* New Transaction Card */}
-          <Card asChild className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <Link href="/transactions/new"> {/* Assuming this is the correct path */} 
+          <Link href="/transactions/new" className="block hover:bg-muted/50 transition-colors rounded-lg">
+            <Card className="cursor-pointer h-full">
               <CardHeader className="items-center text-center gap-2">
                 <div className="p-3 rounded-full bg-primary/10 text-primary">
                   <PlusIcon className="w-6 h-6" />
@@ -167,37 +167,34 @@ export default function AppPage() {
                 <CardTitle>New Transaction</CardTitle>
                 <CardDescription>Manually add a buy or sell</CardDescription>
               </CardHeader>
-            </Link>
-          </Card>
+            </Card>
+          </Link>
 
           {/* Import Transactions Card */}
-          <Card asChild className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <Link href="/transactions/import"> {/* Assuming this is the correct path */} 
+          <Link href="/transactions/import" className="block hover:bg-muted/50 transition-colors rounded-lg">
+            <Card className="cursor-pointer h-full">
               <CardHeader className="items-center text-center gap-2">
                  <div className="p-3 rounded-full bg-primary/10 text-primary">
-                   <Upload className="w-6 h-6" /> {/* Using Upload icon */} 
+                   <Upload className="w-6 h-6" />
                  </div>
                 <CardTitle>Import Transactions</CardTitle>
                 <CardDescription>Upload from CSV file</CardDescription>
               </CardHeader>
-            </Link>
-          </Card>
+            </Card>
+          </Link>
 
           {/* Tax Ledger Card */}
-          <Card asChild className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <Link href="/tax">
+          <Link href="/tax" className="block hover:bg-muted/50 transition-colors rounded-lg">
+            <Card className="cursor-pointer h-full">
               <CardHeader className="items-center text-center gap-2">
                  <div className="p-3 rounded-full bg-primary/10 text-primary">
-                   {/* You might want a more specific icon, e.g., from lucide-react */}
-                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                   </svg>
+                   <ReceiptText className="h-6 w-6" />
                  </div>
                 <CardTitle>Tax Ledger</CardTitle>
                 <CardDescription>View capital gains & losses</CardDescription>
               </CardHeader>
-            </Link>
-          </Card>
+            </Card>
+          </Link>
         </div>
       </section>
 

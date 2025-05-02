@@ -1,4 +1,4 @@
-import { allPosts, Post } from "content-collections"; // Assuming Post type is exported from generated types
+import { allPosts, Post } from "contentlayer/generated"; // Import from the standard Contentlayer generated path
 
 export type { Post };
 

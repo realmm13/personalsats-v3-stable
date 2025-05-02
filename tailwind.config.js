@@ -3,9 +3,11 @@ import tailwindcssAnimate from 'tailwindcss-animate';
 /** @type {import('tailwindcss').Config} */
 const config = {
   content: [
-    './src/**/*.{js,jsx,ts,tsx,html}',
-    './app/**/*.{js,ts,tsx,mdx}',
-    // add any other globs (e.g. pages/, components/)
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/hooks/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/context/**/*.{js,ts,jsx,tsx,mdx}',
+    // Add other specific paths if needed
   ],
   theme: {
     extend: {

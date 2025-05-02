@@ -23,7 +23,7 @@ export default async function authMiddleware(request: NextRequest) {
 
   if (pathName === "/") {
     const redirectPath = sessionCookie ? "/app" : "/home";
-    return NextResponse.rewrite(new URL(redirectPath, request.url));
+    return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 
   const isAuthRoute = authRoutes.includes(pathName);

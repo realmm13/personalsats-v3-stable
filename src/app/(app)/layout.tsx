@@ -51,6 +51,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <RegisterHotkeys hotkeys={userHotkeys} />
       <CommandPalette />
       {showOnboarding && <BeautifulOnboarder steps={onboardingSteps} />}
+
+      {/* Removed Simplified Test Grid */}
+
       {children}
     </>
   );
