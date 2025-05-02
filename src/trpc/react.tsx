@@ -34,8 +34,9 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
     api.createClient({
       links: [
         loggerLink({
-          enabled: (op) =>
-            IS_DEV || (op.direction === "down" && op.result instanceof Error),
+          enabled: (opts) =>
+            // Only log on errors (down direction, result is Error instance)
+            opts.direction === "down" && opts.result instanceof Error,
         }),
         unstable_httpBatchStreamLink({
           transformer: SuperJSON,

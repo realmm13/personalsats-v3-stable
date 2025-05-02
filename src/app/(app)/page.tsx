@@ -29,6 +29,8 @@ interface HistoryPoint {
 }
 
 export default function AppPage() {
+  console.log("🔥 Rendering src/app/(app)/page.tsx 🔥"); // Canary console log
+
   const [stats, setStats] = useState<Stats | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -113,6 +115,11 @@ export default function AppPage() {
 
   return (
     <div className="vertical space-y-8">
+      {/* Canary Banner */}
+      <div className="bg-yellow-200 text-black text-center p-2 mb-4">
+        TEST: This is the (app)/page.tsx file
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

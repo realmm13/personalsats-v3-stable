@@ -16,7 +16,9 @@ import {
   Plus,
   BarChart3,
   Upload,
+  ReceiptText,
 } from "lucide-react";
+import Link from "next/link";
 
 import { useBitcoinPrice } from '@/hooks/useBitcoinPrice';
 import { formatUSD } from '@/lib/price';
@@ -356,6 +358,24 @@ export function DashboardClient() {
                   </p>
                   <p className="text-muted-foreground text-xs">
                     Import from CSV file
+                  </p>
+                </div>
+              </Button>
+
+              <Button 
+                className="h-auto flex-col items-start justify-start p-4" 
+                variant="outline" 
+                onClick={() => router.push('/tax')}
+              >
+                <div className="bg-primary/10 mb-2 flex h-10 w-10 items-center justify-center rounded-full">
+                  <ReceiptText className="text-primary h-5 w-5" />
+                </div>
+                <div className="space-y-1 text-left">
+                  <p className="text-sm leading-none font-medium">
+                    Tax Ledger
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    View capital gains & losses
                   </p>
                 </div>
               </Button>

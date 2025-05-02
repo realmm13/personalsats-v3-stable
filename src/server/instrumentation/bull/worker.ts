@@ -1,7 +1,8 @@
 import { Job, JobProgress, Worker } from "bullmq";
-import { PrismaClient } from "@/generated/prisma";
+import { PrismaClient } from "@prisma/client";
 import { QUEUE_TYPES, WORKER_NAME, WorkerContext } from "./types";
 import { bullConnection } from "./connection";
+import { serverEnv } from "@/env";
 
 const db = new PrismaClient();
 

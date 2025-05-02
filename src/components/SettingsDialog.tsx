@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { trpc } from "@/trpc/react"; // Correct trpc import path
+import { api } from "@/trpc/react"; // Correct import path - use 'api'
 import { CostBasisMethod } from "@/lib/cost-basis";
 // Import error type if needed, or use standard Error
 import type { TRPCClientErrorLike } from "@trpc/client"; 
@@ -38,8 +38,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   // Use local state, seeded by the query
   const [selectedMethod, setSelectedMethod] = useState<CostBasisMethod>(CostBasisMethod.HIFO);
 
-  // Fetch current setting
-  const { data: settingsData, isLoading: isLoadingSettings } = trpc.userSettings.get.useQuery(
+  // Fetch current setting - Use 'api'
+  const { data: settingsData, isLoading: isLoadingSettings } = api.userSettings.get.useQuery(
     undefined,
     { enabled: open } // Only fetch when the dialog is open
   );
@@ -51,10 +51,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     }
   }, [settingsData]);
 
-  const utils = trpc.useUtils(); // Get utils for cache invalidation
+  const utils = api.useUtils(); // Use 'api'
 
-  // Update mutation
-  const updateMutation = trpc.userSettings.update.useMutation({
+  // Update mutation - Use 'api'
+  const updateMutation = api.userSettings.update.useMutation({
     onSuccess: (data: UserSettingsUpdateOutput) => { // Add explicit type for data
       // Invalidate the get query to refetch fresh data next time dialog opens
       utils.userSettings.get.invalidate();

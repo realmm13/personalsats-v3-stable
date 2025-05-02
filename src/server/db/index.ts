@@ -1,4 +1,4 @@
-import { PrismaClient } from "@/generated/prisma";
+import { PrismaClient } from "@prisma/client";
 import { serverEnv } from "@/env";
 import { IS_DEV } from "@/config/dev-prod";
 import { userExtension } from "./extensions/user"; // Import the extension

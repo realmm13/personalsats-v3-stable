@@ -1,4 +1,5 @@
-import { PrismaClient } from "@/generated/prisma";
+import { PrismaClient } from "@prisma/client";
+import { QUEUE_TYPES, WORKER_NAME, WorkerContext } from "./types";
 
 export const WORKER_NAME = "zts-queue";
 

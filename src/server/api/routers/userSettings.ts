@@ -7,6 +7,15 @@ export const userSettingsRouter = createTRPCRouter({
   get: protectedProcedure
     .input(z.undefined())
     .query(async ({ ctx }) => {
+      // Add temporary log to inspect session context
+      console.log("\n[DEBUG] Incoming session in userSettings.get:", JSON.stringify(ctx.session, null, 2)); 
+      
+      // Original logic (keep for now, but add check)
+      if (!ctx.session?.user) { 
+        console.error("[DEBUG] Session or session.user is missing!");
+        throw new Error("User session not found in context"); // Throw specific error
+      }
+
       const user = await ctx.db.user.findUniqueOrThrow({
         where: { id: ctx.session.user.id },
         select: { accountingMethod: true }, // Select the specific field
