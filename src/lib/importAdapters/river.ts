@@ -134,7 +134,7 @@ export function processRiverCsv(rows: Record<string, any>[]): ProcessedImport[] 
       
       // Add successful transaction or skipped row to results
       if (transactionData) {
-          results.push({ sourceRow: row, data: transactionData });
+      results.push({ sourceRow: row, data: transactionData });
       } else {
           results.push({ sourceRow: row, skipped: true, reason: skipReason ?? "Row did not match known patterns" });
       }

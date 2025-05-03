@@ -175,7 +175,7 @@ export default function AppPage() {
                 <CardDescription>Manually add a buy or sell</CardDescription>
               </CardHeader>
             </Card>
-          </Link>
+            </Link>
 
           {/* Import Transactions Card */}
           <Link href="/transactions/import" className="block hover:bg-muted/50 transition-colors rounded-lg">
@@ -188,7 +188,7 @@ export default function AppPage() {
                 <CardDescription>Upload from CSV file</CardDescription>
               </CardHeader>
             </Card>
-          </Link>
+            </Link>
 
           {/* Tax Ledger Card */}
           <Link href="/tax" className="block hover:bg-muted/50 transition-colors rounded-lg">
@@ -201,7 +201,7 @@ export default function AppPage() {
                 <CardDescription>View capital gains & losses</CardDescription>
               </CardHeader>
             </Card>
-          </Link>
+            </Link>
         </div>
       </section>
 

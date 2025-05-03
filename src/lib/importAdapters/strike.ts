@@ -125,9 +125,9 @@ export function processStrikeCsv(rows: Record<string, any>[]): ProcessedImport[]
         
         } else if (transactionType === 'deposit' || transactionType === 'withdrawal') {
             // Explicitly skip Strike's own Deposit/Withdrawal types
-            results.push({ sourceRow: row, skipped: true, reason: `Skipping type: ${row['Transaction Type']}` });
-            continue;
-        
+                results.push({ sourceRow: row, skipped: true, reason: `Skipping type: ${row['Transaction Type']}` });
+                continue;
+
         } else if (transactionType === 'onchain' || transactionType === 'p2p' || transactionType === 'lightning') {
             // Process Onchain, P2P, Lightning
             const timestamp = parseStrikeTimestamp(row['Completed Date (UTC)'], row['Completed Time (UTC)']);
@@ -174,7 +174,7 @@ export function processStrikeCsv(rows: Record<string, any>[]): ProcessedImport[]
                 // Assume no direct fee for P2P unless specified otherwise
                 notes = 'P2P Transfer';
             }
-            
+
             results.push({
                 sourceRow: row,
                 data: {

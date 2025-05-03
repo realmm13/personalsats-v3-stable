@@ -194,39 +194,43 @@ function TaxPageContent() {
            </div>
 
           <Table className="mt-4"> {/* Added margin top */}
-            <TableHeader>
-              <TableRow>
-                {["Date", "Amount", "Proceeds", "Cost Basis", "Gain", "Term"].map((col) => (
-                  <TableHead key={col}>{col}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {/* Conditionally render placeholder row or data rows */}
-              {!report || !report.details || report.details.length === 0 ? (
-                <TableRow> {/* Wrap message in TableRow */}
-                  <TableCell 
-                    colSpan={6} /* Match number of columns */
-                    className="text-center text-gray-500 py-4"
-                  >
-                   No sales transactions recorded for this period.
-                  </TableCell>
+            <>
+              <TableHeader>
+                <TableRow>
+                  {["Date", "Amount", "Proceeds", "Cost Basis", "Gain", "Term"].map((col) => (
+                    <TableHead key={col}>{col}</TableHead>
+                  ))}
                 </TableRow>
-              ) : (
-                report.details.map((item: TaxReport['details'][0], index: number) => (
-                  <TableRow key={item.saleTxId || index}>
-                     <TableCell>{format(new Date(item.saleDate), 'yyyy-MM-dd')}</TableCell>
-                     <TableCell className="text-right">{item.amountSold.toFixed(8)}</TableCell> {/* Use existing fields */}
-                     <TableCell className="text-right">{formatUSD(item.proceeds)}</TableCell>
-                     <TableCell className="text-right">{formatUSD(item.costBasis)}</TableCell>
-                     <TableCell className={`text-right ${item.gain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                         {formatUSD(item.gain)}
-                     </TableCell>
-                     <TableCell>{item.term}</TableCell>
+              </TableHeader>
+            </>
+            <>
+              <TableBody>
+                {/* Conditionally render placeholder row or data rows */}
+                {!report || !report.details || report.details.length === 0 ? (
+                  <TableRow> {/* Wrap message in TableRow */}
+                    <TableCell
+                      colSpan={6} /* Match number of columns */
+                      className="text-center text-gray-500 py-4"
+                    >
+                    No sales transactions recorded for this period.
+                    </TableCell>
                   </TableRow>
-                ))
-              )}
-           </TableBody>
+                ) : (
+                  report.details.map((item: TaxReport['details'][0], index: number) => (
+                    <TableRow key={item.saleTxId || index}>
+                      <TableCell>{format(new Date(item.saleDate), 'yyyy-MM-dd')}</TableCell>
+                      <TableCell className="text-right">{item.amountSold.toFixed(8)}</TableCell> {/* Use existing fields */}
+                      <TableCell className="text-right">{formatUSD(item.proceeds)}</TableCell>
+                      <TableCell className="text-right">{formatUSD(item.costBasis)}</TableCell>
+                      <TableCell className={`text-right ${item.gain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatUSD(item.gain)}
+                      </TableCell>
+                      <TableCell>{item.term}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </>
           </Table>
          </>
        )}
