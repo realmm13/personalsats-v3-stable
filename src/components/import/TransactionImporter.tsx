@@ -12,6 +12,7 @@ import { processStrikeCsv } from '@/lib/importAdapters/strike';
 import { processRiverCsv } from '@/lib/importAdapters/river';
 import { encryptString } from "@/lib/encryption";
 import type { Transaction } from "@/lib/types";
+import { useEncryption } from '@/context/EncryptionContext';
 
 interface TransactionImporterProps {
   onSuccess?: () => void;
@@ -63,6 +64,7 @@ export function TransactionImporter({
   const [skippedCount, setSkippedCount] = useState<number>(0);
   const [selectedSource, setSelectedSource] = useState<SourceType | "auto">("auto");
   const [autoDetectedSource, setAutoDetectedSource] = useState<SourceType>("unknown");
+  const { encryptionPhrase } = useEncryption();
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -98,6 +100,10 @@ export function TransactionImporter({
   const handleImport = async () => {
     if (!selectedFile || !isKeySet || !encryptionKey) {
       toast.error("Please select a file and ensure your passphrase is set.");
+      return;
+    }
+    if (!encryptionPhrase) {
+      toast.error("Please enter your encryption passphrase first.");
       return;
     }
 
@@ -199,7 +205,7 @@ export function TransactionImporter({
             const response = await fetch('/api/transactions/bulk', { 
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payloadForApi)
+                body: JSON.stringify({ rows: payloadForApi, encryptionPhrase })
             });
 
             if (!response.ok) {
@@ -212,8 +218,8 @@ export function TransactionImporter({
             }
 
             const result = await response.json();
-            toast.success(`Successfully imported ${result.count} transactions.`);
-            setImportedCount(result.count);
+            toast.success(`Successfully imported ${result.imported || result.count} transactions.`);
+            setImportedCount(result.imported || result.count);
             onSuccess?.();
             
           } catch (apiError) {

@@ -116,10 +116,7 @@ export default function AppPage() {
   return (
     <div className="vertical space-y-8">
       {/* Canary Banner */}
-      <div className="bg-yellow-200 text-black text-center p-2 mb-4">
-        TEST: This is the (app)/page.tsx file
-      </div>
-
+      {/* Remove any AppHeader, Logo, or global header/sidebar here */}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

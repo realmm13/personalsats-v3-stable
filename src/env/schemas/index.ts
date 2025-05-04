@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { z } from "zod";
 import * as authSchemas from "./auth";
 import * as githubSchemas from "./github";

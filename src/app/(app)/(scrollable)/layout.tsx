@@ -1,12 +1,15 @@
-import AppHeader from "@/components/core/AppHeader";
+import { HEADER_HEIGHT } from "@/config/config";
+import { ReactNode } from "react";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default function ScrollableLayout({ children }: {
+  children: React.ReactNode;
+}) {
   return (
-    <div className="bg-background flex min-h-screen flex-col">
-      <AppHeader />
-      <main className="vertical mx-auto mt-[var(--header-height)] w-full max-w-[var(--container-max-width)] flex-1 px-4 py-4">
-        {children}
-      </main>
+    <div
+      className="mx-auto w-full max-w-[var(--container-max-width)] px-4"
+      style={{ paddingTop: `${HEADER_HEIGHT}px` }}
+    >
+      {children}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { APP_NAME } from "@/config/config";
 import { userHotkeys } from "@/config/hotkeys";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useIsImpersonating } from "@/hooks/useIsImpersonating";
+import AppHeader from '@/components/core/AppHeader';
 
 // Define steps for onboarding
 const onboardingSteps: OnboardingStep[] = [
@@ -45,16 +46,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const user = useCurrentUser();
   const { isImpersonating } = useIsImpersonating();
   const showOnboarding = user && !user.onboarded && !isImpersonating;
+  // console.log("🟩 DASH layout rendering");
+  // console.log("🔥 dashboard layout rendering header?");
   return (
     <>
       {/* global hotkeys that apply only when user is logged in */}
       <RegisterHotkeys hotkeys={userHotkeys} />
       <CommandPalette />
       {showOnboarding && <BeautifulOnboarder steps={onboardingSteps} />}
-
-      {/* Removed Simplified Test Grid */}
-
-      {children}
+      <AppHeader />
+      <main>{children}</main>
     </>
   );
 }

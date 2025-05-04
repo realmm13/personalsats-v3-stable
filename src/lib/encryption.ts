@@ -3,8 +3,10 @@
 // This uses Web Crypto API for AES-GCM encryption
 // and PBKDF2 key derivation from a user passphrase.
 
-export async function generateEncryptionKey(passphrase: string): Promise<CryptoKey> {
+export async function generateEncryptionKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
   const encoder = new TextEncoder();
+
+  // 2) Derive the key with the provided salt
   const passphraseKey = await crypto.subtle.importKey(
     "raw",
     encoder.encode(passphrase),
@@ -16,7 +18,7 @@ export async function generateEncryptionKey(passphrase: string): Promise<CryptoK
   return crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt: encoder.encode("sats-vault"), // You can customize this per app
+      salt,
       iterations: 100_000,
       hash: "SHA-256",
     },

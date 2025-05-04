@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { Prisma } from "@prisma/client"; // Import Prisma namespace
+import { CostBasisMethod } from '@/lib/cost-basis';
 
 export const transactionsRouter = createTRPCRouter({
   // --- DELETE MANY TRANSACTIONS ---
@@ -94,6 +95,67 @@ export const transactionsRouter = createTRPCRouter({
           console.error(`[API] Error clearing all transactions for user ${userId}:`, error);
           throw new Error("Failed to clear all transactions.");
       }
+    }),
+
+  // --- TAX LEDGER ENDPOINT ---
+  getTaxLedger: protectedProcedure
+    .input(
+      z.object({
+        year: z.number().optional(),           // allow filtering by tax year
+        method: z.nativeEnum(CostBasisMethod)  // FIFO/LIFO/HIFO
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // 1. fetch all allocations for sells in the year
+      const allocs = await ctx.db.allocation.findMany({
+        where: {
+          transaction: { userId: userId, timestamp: {
+            gte: input.year
+              ? new Date(`${input.year}-01-01`)
+              : new Date(0),
+            lt: input.year
+              ? new Date(`${input.year + 1}-01-01`)
+              : new Date()
+          }},
+        },
+        include: {
+          lot: { select: { openedAt: true, costBasisUsd: true, originalAmount: true } },
+          transaction: { select: { timestamp: true, price: true, amount: true } }
+        }
+      });
+
+      // 2. map to ledger rows
+      const rows = allocs.map(a => {
+        const acquired = a.lot.openedAt;
+        const disposed = a.transaction.timestamp;
+        const quantity = a.qty;
+        const costBasisPerUnit = a.lot.originalAmount > 0 ? a.lot.costBasisUsd / a.lot.originalAmount : 0;
+        const costBasis = a.qty * costBasisPerUnit;
+        const proceeds  = a.qty * (a.transaction.price ?? 0);
+        const gain      = proceeds - costBasis;
+        const longTerm  = (disposed.getTime() - acquired.getTime()) >= 365 * 24 * 60 * 60 * 1000;
+        return {
+          acquired,
+          disposed,
+          quantity,
+          costBasis,
+          proceeds,
+          gain,
+          term: longTerm ? 'Long-Term' : 'Short-Term'
+        };
+      });
+
+      // 3. unrealized P/L: sum open lots
+      const openLots = await ctx.db.lot.findMany({
+        where: { transaction: { userId: userId }, remainingQty: { gt: 0 } },
+        select: { openedAt: true, remainingQty: true, costBasisUsd: true }
+      });
+      // you'll need a price-at-date or current market price feed here
+      // for now we can skip or compute using the latest spot rate
+
+      return { rows /*, openLots… */ };
     }),
 });
 

@@ -1,13 +1,8 @@
-import AppHeader from "@/components/core/AppHeader";
+import { ReactNode } from "react";
 
-export default function DemoLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function FullPageLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="grid h-screen max-h-screen min-h-screen grid-rows-[auto_1fr_auto] overflow-hidden">
-      <AppHeader />
+    <div className="flex h-[calc(100dvh-var(--header-height))] flex-col">
       {children}
     </div>
   );

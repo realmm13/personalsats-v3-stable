@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/lib/auth.ts",
+    "src/lib/transactions/process.ts",
+    "src/app/api/transactions/bulk/route.ts"
+  ]
+} 

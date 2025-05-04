@@ -54,12 +54,12 @@ export function DashboardClient() {
   
   // --- Fetch All Transactions ---
   const apiUrl = "/api/transactions"; // Fetch all transactions
-  const { data: rawTransactions, error: transactionsError, isLoading: transactionsLoading, mutate: mutateTransactions } = 
+  const { data: rawTxs, error: transactionsError, isLoading: loadingTxs, mutate: mutateTransactions } = 
     useSWR<Transaction[]>(apiUrl, fetcher); 
   // ---------------------------
   
   // --- Log Raw Data ---
-  console.log("[Raw API Data]:", rawTransactions);
+  console.log("[Raw API Data]:", rawTxs);
   // --------------------
 
   const { 
@@ -67,72 +67,31 @@ export function DashboardClient() {
     isLoadingKey, 
     isKeySet
   } = useEncryption();
-  const [decryptedTransactions, setDecryptedTransactions] = useState<Transaction[]>([]);
+  console.log('[Dashboard] encryptionKey is', encryptionKey);
+  const [txs, setTxs] = useState<Transaction[] | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-  // useEffect for decryption
   useEffect(() => {
-    // Removed log from here
-    // console.log("[DashboardClient] Encryption Key Check (in useEffect):", encryptionKey);
-    
-    if (!rawTransactions || rawTransactions.length === 0 || !encryptionKey) {
-      if (decryptedTransactions.length > 0) setDecryptedTransactions([]); 
-      return;
-    }
-
-    const decryptAll = async () => {
-      // Add log here, just before decryption loop starts
-      console.log("--- [DashboardClient] Starting decryption loop. Key state: ---", encryptionKey); 
-      
-      console.log("Attempting to decrypt transactions..."); // Keep existing log
-      
-      const decryptedPromises = rawTransactions.map(async (tx) => {
-        if (!tx.encryptedData) {
-          return tx;
-        }
-        // Check encryptionKey again just before decrypting (should be same as above log)
-        if (!encryptionKey) { 
-             console.error(`❌ Cannot decrypt tx ${tx.id} because key became null unexpectedly.`);
-             return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: false, decryptionError: true };
-        }
-
+    if (isLoadingKey || loadingTxs || !encryptionKey || !rawTxs) return;
+    console.log('[Dashboard] decrypting', rawTxs.length, 'transactions');
+    Promise.all(
+      rawTxs.map(async (tx) => {
         try {
+          if (!tx.encryptedData) return tx;
           const decryptedString = await decryptString(tx.encryptedData, encryptionKey);
-          const decryptedObject = JSON.parse(decryptedString);
-          
-          // --- Add Logging ---
-          console.log(`[Decrypt Log] Tx ID: ${tx.id}`);
-          console.log("[Decrypt Log] Original tx:", tx);
-          console.log("[Decrypt Log] Decrypted object:", decryptedObject);
-          // -------------------
-          
-          return {
-            ...tx, // Original data (id, userId, timestamp, potentially null fields)
-            ...decryptedObject, // Overwrite with decrypted fields
-            timestamp: new Date(tx.timestamp), // Ensure timestamp is Date object
-            isDecrypted: true,
-            encryptedData: null, // Clear encrypted data field
-          };
-        } catch (error) {
-          console.error(`❌ Failed to decrypt transaction ${tx.id}:`, error);
-          return {
-            ...tx,
-            timestamp: new Date(tx.timestamp),
-            isDecrypted: false,
-          };
+          const decryptedData = JSON.parse(decryptedString);
+          return { ...tx, ...decryptedData, isDecrypted: true, decryptionError: false };
+        } catch (err) {
+          console.warn('Skipping decrypt for tx', tx.id, err);
+          return { ...tx, isDecrypted: false, decryptionError: true };
         }
-      });
+      })
+    ).then((results) => {
+      setTxs(results.filter((r): r is Transaction => r != null));
+    });
+  }, [isLoadingKey, encryptionKey, loadingTxs, rawTxs]);
 
-      const results = await Promise.all(decryptedPromises);
-      console.log("Decryption complete.");
-      setDecryptedTransactions(results);
-    };
-
-    decryptAll();
-  }, [rawTransactions, encryptionKey]); // Dependencies: run when raw data or key changes
-
-  if (transactionsLoading || priceLoading || (isLoadingKey && !encryptionKey && decryptedTransactions.length === 0) ) {
-    // Adjusted loading state: Show spinner if loading data/price, OR if loading key AND we don't have decrypted data yet
+  if (isLoadingKey || loadingTxs || !encryptionKey || !rawTxs || !txs) {
     return <div className="flex justify-center items-center h-64"><Spinner size="lg" /></div>;
   }
 
@@ -140,12 +99,12 @@ export function DashboardClient() {
     return <div className="text-center text-red-500">Failed to load transaction data.</div>;
   }
 
-  // Use decryptedTransactions for calculations and display
-  const portfolio = calculatePortfolioSummary(decryptedTransactions, bitcoinPrice);
-  const recentTransactionsToDisplay = getRecentTransactions(decryptedTransactions);
+  // Use txs for calculations and display
+  const portfolio = calculatePortfolioSummary(txs, bitcoinPrice);
+  const recentTransactionsToDisplay = getRecentTransactions(txs);
 
   // --- Log State Before Render ---
-  console.log("[State Check] decryptedTransactions:", decryptedTransactions);
+  console.log("[State Check] txs:", txs);
   console.log("[State Check] recentTransactionsToDisplay:", recentTransactionsToDisplay);
   // -------------------------------
 
@@ -278,9 +237,9 @@ export function DashboardClient() {
               </Button>
             </div>
             <div className="space-y-4">
-              {decryptedTransactions.length === 0 ? (
+              {txs.length === 0 ? (
                 <div className="text-muted-foreground text-center py-4">
-                  {(!rawTransactions || rawTransactions.length === 0) ? "No transactions yet" : (isLoadingKey ? "Decrypting..." : "Enter passphrase to view details")}
+                  {(!rawTxs || rawTxs.length === 0) ? "No transactions yet" : (isLoadingKey ? "Decrypting..." : "Enter passphrase to view details")}
                 </div>
               ) : (
                 recentTransactionsToDisplay.map((tx) => (
@@ -377,19 +336,21 @@ export function DashboardClient() {
               <Button 
                 className="h-auto flex-col items-start justify-start p-4" 
                 variant="outline" 
-                onClick={() => router.push('/tax')}
+                asChild
               >
-                <div className="bg-primary/10 mb-2 flex h-10 w-10 items-center justify-center rounded-full">
-                  <ReceiptText className="text-primary h-5 w-5" />
-                </div>
-                <div className="space-y-1 text-left">
-                  <p className="text-sm leading-none font-medium">
-                    Tax Ledger
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    View capital gains & losses
-                  </p>
-                </div>
+                <Link href="/tax-ledger" className="w-full text-left">
+                  <div className="bg-primary/10 mb-2 flex h-10 w-10 items-center justify-center rounded-full">
+                    <ReceiptText className="text-primary h-5 w-5" />
+                  </div>
+                  <div className="space-y-1 text-left">
+                    <p className="text-sm leading-none font-medium">
+                      View Tax Ledger
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      View capital gains & losses
+                    </p>
+                  </div>
+                </Link>
               </Button>
             </div>
           </Card>

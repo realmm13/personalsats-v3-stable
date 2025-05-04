@@ -38,6 +38,8 @@ export const metadata: Metadata = {
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // console.log("🟦 ROOT layout rendering");
+  // console.log("🚀 root layout rendering header?");
   return (
     <html
       lang="en"
