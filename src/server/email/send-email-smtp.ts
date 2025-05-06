@@ -79,7 +79,7 @@ export const sendEmailSmtp = async ({
 
   // Check if any email failed to send
   const firstError = results.find((r) => r.error);
-  if (firstError && firstError.error) {
+  if (firstError?.error) {
     // Throw an error summarizing the failure if needed, or just return results
     // For simplicity, we might just return the results array including errors.
     // throw new Error(`One or more emails failed to send via SMTP. First error: ${firstError.error.message}`);

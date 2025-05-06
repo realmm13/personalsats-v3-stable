@@ -8,6 +8,29 @@ ENV generator → https://env.zerotoshipped.com/
 
 Personal Sats is a privacy-first, Bitcoin-only portfolio and tax tracker. It helps users manually log trades, calculate capital gains/losses, capture wash sale losses, and get tax-optimized insights — all without linking wallets or exchanges.
 
+## Security Architecture
+
+### Client-Side Encryption
+Personal Sats uses a client-side encryption model to ensure maximum privacy:
+- All sensitive transaction data is encrypted in the browser before being sent to the server
+- Each user has a unique encryption salt stored in the database
+- The encryption key is derived from the user's passphrase and salt using PBKDF2
+- The server never sees or handles unencrypted data
+- All encryption/decryption operations happen in the browser
+
+### API Contract
+The API endpoints expect and return both encrypted and decrypted data:
+- `encryptedData`: The encrypted payload containing all sensitive fields
+- Decrypted fields: Individual fields are stored unencrypted for querying and display
+- The server never performs encryption/decryption operations
+
+### Migration
+For existing users, a migration script is provided to generate and store encryption salts:
+```bash
+# Generate salts for all users
+npm run migrate:salts
+```
+
 ## Environment Variables
 
 ### Bitcoin Price Settings

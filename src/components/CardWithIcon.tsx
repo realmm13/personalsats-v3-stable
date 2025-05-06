@@ -1,7 +1,7 @@
 import React from "react";
-import { LucideIcon } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CardIcon, GradientType } from "./CardIcon";
+import { CardIcon, type GradientType } from "./CardIcon";
 
 interface CardWithIconProps {
   title: string;

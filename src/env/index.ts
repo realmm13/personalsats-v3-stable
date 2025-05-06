@@ -24,8 +24,8 @@ if (!_serverEnv.success) {
     ...formatErrors(formatted),
   );
 
-  if (formatted["_errors"]) {
-    console.log(...formatted["_errors"]);
+  if (formatted._errors) {
+    console.log(...formatted._errors);
   }
 
   console.log("");

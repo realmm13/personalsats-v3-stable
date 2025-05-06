@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { useTheme } from "next-themes";
 import {
   SegmentedControl,
-  SegmentedControlOption,
+  type SegmentedControlOption,
 } from "@/components/SegmentedControl";
 import { Moon, Sun, Monitor } from "lucide-react";
 import { SettingsPanel } from "./SettingsPanel";

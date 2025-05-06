@@ -1,4 +1,4 @@
-import { KeyboardEvent, FormEvent, RefObject, ChangeEvent } from "react";
+import { type KeyboardEvent, type FormEvent, type RefObject, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import { cn } from "@/lib/utils";

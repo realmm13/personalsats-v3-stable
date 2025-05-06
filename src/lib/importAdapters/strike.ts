@@ -3,6 +3,7 @@ import type { Transaction } from '@/lib/types'; // Import canonical type
 
 // Define the expected raw row structure from PapaParse (dynamicTyping=true)
 interface StrikeRawRow {
+  [key: string]: unknown;
   'Transaction ID': string;
   'Initiated Date (UTC)': string;
   'Initiated Time (UTC)': string;
@@ -23,28 +24,32 @@ interface StrikeRawRow {
   // Include other potential columns if necessary
 }
 
-// Define the output structure (canonical transaction + potentially metadata)
-interface ProcessedImport {
-  data?: Partial<Transaction>; // Use Partial as not all fields might be derived
-  error?: string;
-  skipped?: boolean;
-  reason?: string; // Add reason field
-  needsReview?: boolean;
-  needsPrice?: boolean; // Flag if price needs backfill
-  sourceRow: Record<string, any>; // Use Record for standardization
+export interface RawImportRecord { id: string; payload: string; /* ... */ }
+export interface ParsedTransaction {
+  id?: string;
+  amount: number;
+  date?: Date;
+  description?: string;
+  timestamp?: Date;
+  type?: 'buy' | 'sell' | 'deposit' | 'withdrawal';
+  asset?: string;
+  price?: number;
+  priceAsset?: string;
+  fee?: number;
+  feeAsset?: string;
+  wallet?: string;
+  notes?: string;
+  exchangeTxId?: string;
 }
 
-// Import the shared ProcessedImport type if defined elsewhere, or define locally
-// Assuming it's defined in TransactionImporter for now, adjust if needed
-// import { ProcessedImport } from '@/components/import/TransactionImporter'; 
 interface ProcessedImport {
-  data?: Partial<Transaction>; // Use Partial<Transaction> if type is available
+  data?: Partial<ParsedTransaction>;
   error?: string;
   skipped?: boolean;
   reason?: string;
   needsReview?: boolean;
   needsPrice?: boolean;
-  sourceRow: Record<string, any>; 
+  sourceRow: Record<string, unknown>;
 }
 
 // Helper to parse Strike's date/time format
@@ -94,7 +99,7 @@ function parsePrice(currency: string | null, value: number | null): { value: num
     return { value: undefined, currency: undefined };
 }
 
-export function processStrikeCsv(rows: Record<string, any>[]): ProcessedImport[] {
+export function processStrikeCsv(rows: Record<string, unknown>[]): ProcessedImport[] {
   const results: ProcessedImport[] = [];
   const tradesById: Record<string, StrikeRawRow[]> = {};
 

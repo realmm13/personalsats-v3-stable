@@ -1,11 +1,11 @@
 import React from "react";
-import { ReactFC } from "@/lib/utils";
+import { type ReactFC } from "@/lib/utils";
 import { BottomDrawer } from "./BottomDrawer";
 import { MenuProvider } from "@/components/MenuContext";
 import { useControlledOpen } from "@/hooks/useControlledOpen";
 import {
   BottomDrawerMenuItem,
-  BottomDrawerMenuItemProps,
+  type BottomDrawerMenuItemProps,
 } from "./BottomDrawerMenuItem";
 import { BottomDrawerMenuItems } from "./BottomDrawerMenuComponents";
 

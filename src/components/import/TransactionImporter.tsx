@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, ChangeEvent } from 'react';
+import React, { useState, type ChangeEvent } from 'react';
 import Papa from 'papaparse';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { processRiverCsv } from '@/lib/importAdapters/river';
 import { encryptString } from "@/lib/encryption";
 import type { Transaction } from "@/lib/types";
 import { useEncryption } from '@/context/EncryptionContext';
+import { submitTransactions } from '@/services/transactionService';
 
 interface TransactionImporterProps {
   onSuccess?: () => void;
@@ -202,26 +203,22 @@ export function TransactionImporter({
 
           try {
             toast.info(`Sending ${payloadForApi.length} transactions to server...`);
-            const response = await fetch('/api/transactions/bulk', { 
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ rows: payloadForApi, encryptionPhrase })
-            });
+            const txArray = successfulImports.map(item => ({
+              ...item.data,
+              id: crypto.randomUUID(),
+              userId: '',
+              timestamp: item.data?.timestamp instanceof Date ? item.data.timestamp.toISOString() : new Date().toISOString(),
+            }));
 
-            if (!response.ok) {
-              let errorMsg = "Bulk import API failed";
-              try {
-                  const errorData = await response.json();
-                  if (errorData && errorData.error) errorMsg = errorData.error;
-              } catch { /* Ignore */ }
-              throw new Error(`${errorMsg} (Status: ${response.status})`);
-            }
-
-            const result = await response.json();
-            toast.success(`Successfully imported ${result.imported || result.count} transactions.`);
-            setImportedCount(result.imported || result.count);
+            const results = await submitTransactions(txArray);
+            console.log('Bulk import results:', results);
+            const successCount = results.filter(r => r.status === 'ok').length;
+            toast.success(`Successfully imported ${successCount} transactions.`);
+            setImportedCount(successCount);
             onSuccess?.();
-            
+            setIsLoading(false);
+            return;
+
           } catch (apiError) {
              console.error("Bulk API Error:", apiError);
              toast.error(`Failed to save imported transactions: ${apiError instanceof Error ? apiError.message : 'Unknown API error'}`);

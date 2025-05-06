@@ -1,13 +1,13 @@
 import React from "react";
-import { FieldValues, FieldPath } from "react-hook-form";
+import { type FieldValues, type FieldPath } from "react-hook-form";
 import {
   FormFieldWrapper,
-  FormFieldWrapperProps,
+  type FormFieldWrapperProps,
 } from "@/components/FormFieldWrapper";
 import {
   SegmentedControl,
-  SegmentedControlOption,
-  SegmentedControlProps,
+  type SegmentedControlOption,
+  type SegmentedControlProps,
 } from "@/components/SegmentedControl";
 
 // Re-export SegmentedControlOption

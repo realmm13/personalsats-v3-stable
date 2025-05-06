@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useForm, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { type z } from "zod";
 import { Plus, X, Download, Bitcoin, Loader2 } from "lucide-react";
 import { FormFieldInput } from "@/components/FormFieldInput";
 import { FormFieldTextarea } from "@/components/FormFieldTextarea";
@@ -18,6 +18,8 @@ import { formatUSD } from "@/lib/price";
 import { FormFieldTags } from "@/components/FormFieldTags";
 import { encryptString } from "@/lib/encryption";
 import { useEncryption } from "@/context/EncryptionContext";
+import { submitTransaction } from '@/services/transactionService';
+import { encryptTx } from '@/lib/opensecret';
 
 export type TransactionFormData = z.infer<typeof transactionSchema>;
 
@@ -74,44 +76,36 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
   };
 
   const onSubmit = async (data: TransactionFormData) => {
-    if (!encryptionKey) {
-      setError("Encryption key is not available. Cannot submit.");
-      console.error("AddTransactionForm: onSubmit called but encryptionKey is missing.");
-      return;
-    }
-
-    console.log("Form Data (before encryption):", data);
     setLoading(true);
     setError(null);
-
     try {
-      const payload = {
-        type: data.type,
-        amount: data.amount,
-        price: data.price,
-        fee: data.fee,
-        wallet: data.wallet,
-        tags: data.tags,
-        notes: data.notes,
-      };
-
-      const encryptedData = await encryptString(JSON.stringify(payload), encryptionKey);
-
-      const apiData = {
+      // Compose a Transaction object (add any required fields)
+      const tx = {
+        ...data,
+        id: crypto.randomUUID(), // or another unique ID strategy
+        userId: '', // Fill if needed, or let backend infer from session
         timestamp: new Date(data.timestamp).toISOString(),
-        encryptedData: encryptedData,
       };
-
-      const response = await fetch("/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(apiData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to add transaction");
+      if (!encryptionKey) {
+        setError('Encryption key not set');
+        setLoading(false);
+        return;
       }
+      const encryptedData = await encryptTx(tx, encryptionKey);
+      console.log('🔑 encryptedData:', encryptedData);
+      const payload = {
+        id: tx.id,
+        amount: Number(tx.amount),
+        date: tx.timestamp,
+        price: Number(tx.price),
+        fee: Number(tx.fee),
+        wallet: tx.wallet,
+        tags: tx.tags,
+        notes: tx.notes,
+        encryptedData,
+      };
+      console.log('🚀 payload:', payload);
+      await submitTransaction(payload);
       onSuccess();
       form.reset();
     } catch (err) {

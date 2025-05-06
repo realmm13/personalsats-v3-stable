@@ -2,13 +2,13 @@
 import React, { useEffect } from "react";
 import {
   FormFieldWrapper,
-  FormFieldWrapperProps,
+  type FormFieldWrapperProps,
 } from "@/components/FormFieldWrapper";
 import {
   UploadThingUploadSingleImage,
   type InitialImageType,
 } from "@/components/core/UploadThingUploadSingleImage/UploadThingUploadSingleImage";
-import { FieldValues, FieldPath, useFormContext } from "react-hook-form";
+import { type FieldValues, type FieldPath, useFormContext } from "react-hook-form";
 import type { OurFileRouter } from "@/server/uploadthing/core";
 
 export interface FormFieldUploadThingImageProps<

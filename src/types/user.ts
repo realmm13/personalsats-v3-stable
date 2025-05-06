@@ -1,4 +1,4 @@
-import { InitialImageType } from "@/components/core/UploadThingUploadSingleImage";
+import { type InitialImageType } from "@/components/core/UploadThingUploadSingleImage";
 import { z } from "zod";
 
 export const UpdateProfileInput = z.object({

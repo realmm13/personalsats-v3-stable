@@ -1,5 +1,5 @@
 import { clientSchema, clientEnvRaw } from "./schemas/index";
-import { z } from "zod";
+import { type z } from "zod";
 
 const _clientEnv = clientSchema.safeParse(clientEnvRaw);
 
@@ -21,8 +21,8 @@ if (!_clientEnv.success) {
     ...formatErrors(formatted),
   );
 
-  if (formatted["_errors"]) {
-    console.log(...formatted["_errors"]);
+  if (formatted._errors) {
+    console.log(...formatted._errors);
   }
 
   console.log("");
@@ -30,7 +30,7 @@ if (!_clientEnv.success) {
   throw new Error("Invalid environment variables");
 }
 
-for (let key of Object.keys(_clientEnv.data)) {
+for (const key of Object.keys(_clientEnv.data)) {
   if (
     !key.startsWith("NEXT_PUBLIC_") &&
     key !== "NODE_ENV" &&

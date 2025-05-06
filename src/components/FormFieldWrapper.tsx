@@ -2,9 +2,9 @@
 import React from "react";
 import {
   useFormContext,
-  FieldValues,
-  FieldPath,
-  ControllerRenderProps,
+  type FieldValues,
+  type FieldPath,
+  type ControllerRenderProps,
 } from "react-hook-form";
 import {
   FormControl,

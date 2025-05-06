@@ -5,10 +5,12 @@ import {
   useContext,
   useState,
   useEffect,
-  ReactNode,
+  type ReactNode,
   useCallback,
 } from "react";
 import { generateEncryptionKey } from "@/lib/encryption"; // Keep key generation logic
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import api from '@/api'; // Assuming you have a default export for API calls
 
 // Helper functions for base64 conversion (browser-safe)
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -75,6 +77,7 @@ export const useEncryption = () => {
 };
 
 export const EncryptionProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useCurrentUser();
   const [encryptionKey, setEncryptionKeyState] = useState<CryptoKey | null>(null);
   const [isLoadingKey, setIsLoadingKey] = useState(true); // Start loading until checked
   const [keyError, setKeyError] = useState<string | null>(null);
@@ -85,66 +88,46 @@ export const EncryptionProvider = ({ children }: { children: ReactNode }) => {
     setEncryptionKeyState(key);
     setKeyError(null);
     setIsLoadingKey(false);
-    // No longer persist the CryptoKey to sessionStorage
   }, []);
 
-  // Updated deriveAndSetKey to use the persisting setter and return success
+  // Updated deriveAndSetKey to use the user's encryptionSalt from the server
   const deriveAndSetKey = useCallback(
     async (passphrase: string): Promise<boolean> => {
-      console.log("[EncryptionProvider] Attempting deriveAndSetKey...");
       setIsLoadingKey(true);
       setKeyError(null);
       try {
         if (!passphrase) {
           throw new Error("Passphrase cannot be empty.");
         }
-
-        // 1) Load or generate salt from localStorage
-        let saltB64 = localStorage.getItem("encryptionSalt");
+        if (!user) {
+          throw new Error("User not loaded.");
+        }
         let salt: Uint8Array;
-        if (saltB64) {
-          salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
-          console.log("[EncryptionProvider] Loaded existing salt from localStorage.");
+        let saltHex: string = typeof user?.encryptionSalt === 'string' ? user.encryptionSalt : '';
+        if (!saltHex) {
+          // Generate salt, POST to /api/user/setSalt, and use it
+          const generatedSalt = crypto.getRandomValues(new Uint8Array(16));
+          saltHex = Array.from(generatedSalt).map((b: number) => b.toString(16).padStart(2, '0')).join('');
+          await api.post('/api/user/setSalt', { salt: saltHex });
+          salt = generatedSalt;
         } else {
-          salt = crypto.getRandomValues(new Uint8Array(16));
-          localStorage.setItem("encryptionSalt", btoa(String.fromCharCode(...salt)));
-          console.log("[EncryptionProvider] Generated and saved new salt to localStorage.");
+          // Convert hex string to Uint8Array
+          const matches: RegExpMatchArray | null = saltHex.match(/.{1,2}/g);
+          salt = matches ? new Uint8Array(matches.map((byte: string) => parseInt(byte, 16))) : new Uint8Array();
         }
-
-        // Persist the raw passphrase to sessionStorage (keeps session-specific unlock)
         sessionStorage.setItem("encryptionPhrase", passphrase);
-        console.log('🔑 passphrase saved →', sessionStorage.getItem('encryptionPhrase'));
-
-        // 2) Derive the key using the loaded/generated salt
-        console.log("[EncryptionProvider] Generating key with persisted salt...");
         const key = await generateEncryptionKey(passphrase, salt);
-        console.log("[EncryptionProvider] Key generated.");
-
-        // Fingerprint the key (optional, but good for debugging)
-        try {
-          const raw = await crypto.subtle.exportKey('raw', key);
-          const fingerprint = btoa(String.fromCharCode(...new Uint8Array(raw))).slice(0, 16);
-          console.log('🔑 derived key fingerprint (first 16 chars):', fingerprint);
-        } catch (fpError) {
-          console.error("Error fingerprinting key:", fpError);
-        }
-
-        await setKeyAndPersist(key); // Only set in React state
-        setEncryptionPhrase(passphrase); // Store the passphrase in state
-        console.log("[EncryptionProvider] deriveAndSetKey succeeded.");
+        await setKeyAndPersist(key);
+        setEncryptionPhrase(passphrase);
         return true;
       } catch (error) {
-        console.error("[EncryptionProvider] Error in deriveAndSetKey:", error);
-        setKeyError(
-          error instanceof Error ? error.message : "Failed to derive key.",
-        );
-        await setKeyAndPersist(null); // Clear key state on error
+        setKeyError(error instanceof Error ? error.message : "Failed to derive key.");
+        await setKeyAndPersist(null);
         setEncryptionPhrase(null);
-        console.log("[EncryptionProvider] deriveAndSetKey failed.");
         return false;
       }
     },
-    [setKeyAndPersist],
+    [setKeyAndPersist, user],
   );
 
   // Load key from sessionStorage on initial mount, but only if a passphrase is present

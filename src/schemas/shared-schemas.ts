@@ -1,4 +1,4 @@
-import { string, z } from "zod";
+import { string, type z } from "zod";
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@/server/auth/client";
 
 export const getPasswordSchema = (

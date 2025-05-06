@@ -1,12 +1,12 @@
 "use client";
 import React from "react";
-import { FieldValues, FieldPath } from "react-hook-form";
+import { type FieldValues, type FieldPath } from "react-hook-form";
 import {
   FormFieldWrapper,
-  FormFieldWrapperProps,
+  type FormFieldWrapperProps,
 } from "@/components/FormFieldWrapper";
 import { AdvancedSelect } from "@/components/AdvancedSelect";
-import { SelectOption } from "@/lib/utils";
+import { type SelectOption } from "@/lib/utils";
 
 export interface FormFieldAdvancedSelectProps<
   TFieldValues extends FieldValues = FieldValues,

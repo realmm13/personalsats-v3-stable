@@ -3,9 +3,9 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import {
   FormFieldWrapper,
-  FormFieldWrapperProps,
+  type FormFieldWrapperProps,
 } from "@/components/FormFieldWrapper";
-import { FieldValues, FieldPath } from "react-hook-form";
+import { type FieldValues, type FieldPath } from "react-hook-form";
 
 export interface FormFieldInputProps<
   TFieldValues extends FieldValues = FieldValues,

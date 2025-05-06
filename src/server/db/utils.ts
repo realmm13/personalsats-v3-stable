@@ -92,7 +92,7 @@ export function getUploadThingImageConnectDisconnectArgs(
     // Explicitly removing the image
     return { disconnect: true };
   }
-  if (imageInput && imageInput.id) {
+  if (imageInput?.id) {
     // Connecting a new or existing image
     return { connect: { id: imageInput.id } };
   }

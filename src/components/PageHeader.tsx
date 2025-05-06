@@ -1,9 +1,9 @@
 "use client";
-import { ReactNode, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { LucideMenu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useScrolledPast } from "@/hooks/useScrolledPast";
-import { ReactFC } from "@/lib/utils";
+import { type ReactFC } from "@/lib/utils";
 import { CustomButton } from "@/components/CustomButton";
 import { BottomDrawer } from "@/components/BottomDrawer";
 

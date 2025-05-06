@@ -1,7 +1,7 @@
 import * as React from "react";
-import { ReactFC, cn } from "@/lib/utils";
+import { type ReactFC, cn } from "@/lib/utils";
 import { KbdShortcuts } from "@/components/KbdShortcuts";
-import { KbdClassNames } from "@/components/Kbd";
+import { type KbdClassNames } from "@/components/Kbd";
 
 export interface ShortcutItem {
   label: string;

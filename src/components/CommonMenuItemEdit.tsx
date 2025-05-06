@@ -1,6 +1,6 @@
 import React from "react";
-import { ReactFC } from "@/lib/utils";
-import { CommonMenuItem, CommonMenuItemProps } from "./CommonMenuItem";
+import { type ReactFC } from "@/lib/utils";
+import { CommonMenuItem, type CommonMenuItemProps } from "./CommonMenuItem";
 import { Edit } from "lucide-react";
 
 export interface CommonMenuItemEditProps

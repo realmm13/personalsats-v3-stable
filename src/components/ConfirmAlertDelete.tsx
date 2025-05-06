@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Trash2 } from "lucide-react";
-import { ConfirmAlert, ConfirmAlertProps } from "./ConfirmAlert";
+import { ConfirmAlert, type ConfirmAlertProps } from "./ConfirmAlert";
 
 export interface ConfirmAlertDeleteProps
   extends Omit<ConfirmAlertProps, "variant"> {

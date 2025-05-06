@@ -14,16 +14,34 @@
  * - Tag                  ("Buy" | "Sell" | "Interest")
  */
 
+// Canonical raw and parsed interfaces
+export interface RawImportRecord { id: string; payload: string; /* ... */ }
+export interface ParsedTransaction {
+  id?: string;
+  amount: number;
+  date: Date;
+  description?: string;
+  timestamp?: Date;
+  type?: 'buy' | 'sell' | 'deposit' | 'withdrawal';
+  asset?: string;
+  price?: number;
+  priceAsset?: string;
+  fee?: number;
+  feeAsset?: string;
+  wallet?: string;
+  notes?: string;
+}
+
 // Type definition for the structure returned by this adapter
 // Matching the expected structure in TransactionImporter
 interface ProcessedImport {
-  data?: Partial<any>; // Use Partial<Transaction> if type is available
+  data?: Partial<ParsedTransaction>;
   error?: string;
   skipped?: boolean;
   reason?: string;
   needsReview?: boolean;
   needsPrice?: boolean;
-  sourceRow: Record<string, any>; 
+  sourceRow: Record<string, unknown>;
 }
 
 // Keep the internal RiverTransaction type for clarity within the function
@@ -39,12 +57,12 @@ interface RiverTransactionInternal {
 }
 
 // Update function signature and return type
-export function processRiverCsv(rows: Record<string, any>[]): ProcessedImport[] {
+export function processRiverCsv(rows: Record<string, unknown>[]): ProcessedImport[] {
   const results: ProcessedImport[] = [];
 
   for (const row of rows) {
     try { // Wrap row processing in try/catch for individual errors
-      const rawDate = row['Date'];
+      const rawDate = row.Date as string;
       const timestamp = new Date(rawDate);
       if (isNaN(timestamp.getTime())) {
          throw new Error("Invalid date format");
@@ -57,14 +75,14 @@ export function processRiverCsv(rows: Record<string, any>[]): ProcessedImport[] 
       const recvCurrency = String(row['Received Currency'] ?? '');
       const feeAmt = Number(row['Fee Amount'] ?? 0);
       const feeCurrency = String(row['Fee Currency'] ?? '');
-      const tag = String(row['Tag'] ?? '').trim(); // Trim tag
+      const tag = String(row.Tag ?? '').trim(); // Trim tag
 
       // Validate required amounts (at least one amount should be non-zero usually)
       // if (isNaN(sentAmt) || isNaN(recvAmt) || isNaN(feeAmt)) {
       //    throw new Error("Invalid numeric amount/fee");
       // }
 
-      let transactionData: Partial<any> | undefined = undefined; // Use Partial<Transaction>
+      let transactionData: Partial<ParsedTransaction> | undefined = undefined; // Use Partial<Transaction>
       let skipReason: string | undefined = undefined;
 
       if (tag === 'Buy') {

@@ -1,4 +1,4 @@
-import { Post } from "@/lib/posts";
+import { type Post } from "@/lib/posts";
 import { PostCard } from "./PostCard";
 
 interface PostListProps {

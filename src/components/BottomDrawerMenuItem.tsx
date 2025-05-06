@@ -1,6 +1,6 @@
 import React from "react";
-import { ReactFC, cn } from "@/lib/utils";
-import { LucideIcon } from "lucide-react";
+import { type ReactFC, cn } from "@/lib/utils";
+import { type LucideIcon } from "lucide-react";
 import { HelpInfoCircle } from "@/components/HelpInfoCircle";
 import { useMenuContext } from "@/components/MenuContext";
 import Link from "next/link";

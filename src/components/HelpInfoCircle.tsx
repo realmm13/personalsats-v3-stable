@@ -2,9 +2,9 @@ import React from "react";
 import { HelpCircle } from "lucide-react";
 import {
   SimpleTooltip,
-  TooltipMobileViewType,
+  type TooltipMobileViewType,
 } from "@/components/SimpleTooltip";
-import { ReactFC } from "@/lib/utils";
+import { type ReactFC } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 export interface HelpInfoCircleProps {

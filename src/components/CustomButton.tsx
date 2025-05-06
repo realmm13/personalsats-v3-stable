@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { cn, ReactFC, Size, processColor } from "@/lib/utils";
+import { cn, type ReactFC, type Size, processColor } from "@/lib/utils";
 import { useLinkableComponent } from "@/hooks/useLinkableComponent";
 import { ConditionalTooltip } from "@/components/ConditionalTooltip";
 import { Spinner } from "@/components/Spinner";

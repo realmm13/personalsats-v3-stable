@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { db } from "@/lib/db";
 import { z } from "zod";
 import { transactionSchema, type TransactionFormData } from "@/schemas/transaction-schema";
@@ -18,6 +17,22 @@ export class BadRequestError extends Error {
   }
 }
 
+// Custom error for lot selection issues
+export class LotSelectionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LotSelectionError";
+  }
+}
+
+// Custom error for database operations
+export class DatabaseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DatabaseError";
+  }
+}
+
 // Schema for the incoming API request wrapper (copied from route.ts)
 const wrapperSchema = z.object({
   timestamp: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid date string"),
@@ -29,6 +44,7 @@ interface ProcessTransactionSession {
    user: { 
      id: string; 
      encryptionPhrase: string; 
+     encryptionSalt: string; // required
      accountingMethod?: CostBasisMethod | null;
    };
 }
@@ -39,6 +55,11 @@ interface ProcessTransactionBody {
     encryptedData: string;
 }
 
+// Type guard for error objects
+function isError(value: unknown): value is Error {
+  return value instanceof Error;
+}
+
 // --- Refactored Logic for applying Lot/Allocation rules ---
 async function _applyTransactionLogic(
   userId: string,
@@ -46,7 +67,7 @@ async function _applyTransactionLogic(
   txTimestamp: Date,
   transactionData: TransactionFormData,
   accountingMethod: CostBasisMethod
-) {
+): Promise<void> {
   // 7. Handle BUY logic: Create a new Lot
   if (transactionData.type === "buy" && transactionData.amount && transactionData.price) {
     // Idempotency check: Check if Lot already exists for this transaction ID
@@ -63,10 +84,9 @@ async function _applyTransactionLogic(
           },
         });
         console.log(`Logic: Created Lot for BUY transaction ${txId}`);
-      } catch (lotError) {
-        console.error(`Logic: Failed to create Lot for transaction ${txId}:`, lotError);
-        // Propagate error upwards
-        throw new Error(`Failed to create corresponding Lot for tx ${txId}`); 
+      } catch (error) {
+        console.error(`Logic: Failed to create Lot for transaction ${txId}:`, error);
+        throw new DatabaseError(`Failed to create corresponding Lot for tx ${txId}`); 
       }
     } else {
       console.log(`Logic: Lot already exists for BUY transaction ${txId}, skipping creation.`);
@@ -90,10 +110,7 @@ async function _applyTransactionLogic(
       });
       
       if (openLots.length === 0) {
-          // It's possible there are no lots, this shouldn't necessarily be a BadRequest
-          // if the user simply hasn't bought anything yet. selectLotsForSale handles this.
           console.log(`Logic: No open lots available for user ${userId} to process SELL ${txId}.`);
-          // Let selectLotsForSale handle the "Insufficient lots" error
       }
       
       const availableLots: AvailableLot[] = openLots.map((lot) => ({
@@ -122,13 +139,13 @@ async function _applyTransactionLogic(
              throw new Error('Lot selection process failed to return selected lots.');
         }
 
-      } catch (e: any) {
-         const errorMessage = e instanceof Error ? e.message : "Unknown error during lot selection";
+      } catch (error: unknown) {
+         const errorMessage = isError(error) ? error.message : "Unknown error during lot selection";
          console.error(`Logic: Lot selection failed for sell tx ${txId}:`, errorMessage);
          if (errorMessage.includes("Insufficient available lots")) {
              throw new BadRequestError(errorMessage);
          }
-         throw new Error(errorMessage); 
+         throw new LotSelectionError(errorMessage); 
       }
 
       // Proceed with database transaction only if lot selection succeeded and returned lots
@@ -161,9 +178,9 @@ async function _applyTransactionLogic(
             }
           });
           console.log(`Logic: Created Allocations and updated Lots for SELL transaction ${txId}`);
-      } catch (dbError) {
-           console.error(`Logic: Failed to save Allocations/update Lots for tx ${txId}:`, dbError);
-           throw new Error(`Database update failed during allocation creation/update for tx ${txId}`);
+      } catch (error) {
+           console.error(`Logic: Failed to save Allocations/update Lots for tx ${txId}:`, error);
+           throw new DatabaseError(`Database update failed during allocation creation/update for tx ${txId}`);
       }
   }
 }
@@ -176,90 +193,92 @@ export async function processTransaction(
   session: ProcessTransactionSession 
 ): Promise<{ id: string }> {
   
-  // 1. Validate session user ID and passphrase presence
+  // 1. Validate session user ID, passphrase, and salt presence
   if (!session?.user?.id) {
-    throw new Error("User ID missing from session"); // Internal server error
+    throw new Error("User ID missing from session");
+  }
+  if (!session.user.encryptionPhrase) {
+    throw new Error("Encryption phrase missing from session");
+  }
+  if (!session.user.encryptionSalt) {
+    throw new Error("Encryption salt missing from session");
   }
   const userId = session.user.id;
   const passphrase = session.user.encryptionPhrase;
-  if (!passphrase) {
-    throw new BadRequestError("Encryption key setup incomplete.");
-  }
+  const saltHex = session.user.encryptionSalt;
+  const accountingMethod = session.user.accountingMethod ?? CostBasisMethod.FIFO;
 
-  // 2. Parse and validate the incoming request body wrapper
+  // Convert hex salt to Uint8Array
+  function hexToBytes(hex: string): Uint8Array {
+    if (!hex) return new Uint8Array();
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+    }
+    return bytes;
+  }
+  const salt = hexToBytes(saltHex);
+
+  // 2. Validate the wrapper schema
   const wrapperParsed = wrapperSchema.safeParse(body);
   if (!wrapperParsed.success) {
-     throw new BadRequestError(`Invalid API data format: ${wrapperParsed.error.flatten().fieldErrors}`);
+    const errorMessage = wrapperParsed.error.flatten().fieldErrors;
+    throw new BadRequestError(`Invalid request format: ${JSON.stringify(errorMessage)}`);
   }
-  const { timestamp: timestampString, encryptedData } = wrapperParsed.data;
 
-  // 3. Derive key & decrypt data
-  let plaintextJson: string;
-  let key: CryptoKey;
+  // 3. Decrypt the transaction data
+  let transactionData: TransactionFormData;
   try {
-    key = await generateEncryptionKey(passphrase);
-    plaintextJson = await decryptString(encryptedData, key);
-  } catch (decryptError) {
-    console.error("Decryption failed:", decryptError);
-    throw new BadRequestError("Decryption failed. Invalid key or data?");
+    const key = await generateEncryptionKey(passphrase, salt);
+    const decrypted = await decryptString(wrapperParsed.data.encryptedData, key);
+    const parsed = transactionSchema.safeParse(JSON.parse(decrypted));
+    if (!parsed.success) {
+      throw new BadRequestError(`Invalid transaction data: ${parsed.error.message}`);
+    }
+    transactionData = parsed.data;
+  } catch (error: unknown) {
+    const errorMessage = isError(error) ? error.message : "Failed to decrypt transaction data";
+    throw new BadRequestError(errorMessage);
   }
 
-  // 4. Parse decrypted JSON
-  let decryptedPayload;
+  // 4. Create the transaction record
+  let txId: string;
   try {
-      decryptedPayload = JSON.parse(plaintextJson);
-  } catch (parseError) {
-      console.error("Failed to parse decrypted JSON:", parseError);
-      throw new BadRequestError("Decrypted data is not valid JSON");
+    const txTimestamp = new Date(wrapperParsed.data.timestamp);
+    const tx = await db.bitcoinTransaction.create({
+      data: {
+        userId,
+        timestamp: txTimestamp,
+        type: transactionData.type,
+        amount: transactionData.amount,
+        price: transactionData.price,
+        encryptedData: wrapperParsed.data.encryptedData,
+      },
+    });
+    txId = tx.id;
+  } catch (error: unknown) {
+    const errorMessage = isError(error) ? error.message : "Failed to create transaction record";
+    throw new DatabaseError(errorMessage);
   }
 
-  // 5. Validate decrypted payload against transaction schema
-  const txParsed = transactionSchema.safeParse(decryptedPayload);
-  if (!txParsed.success) {
-    console.error("Decrypted data validation failed:", txParsed.error.flatten());
-    throw new BadRequestError(`Invalid transaction data after decryption: ${JSON.stringify(txParsed.error.flatten().fieldErrors)}`);
-  }
-  const transactionData = txParsed.data;
-
-  // 6. Create the core BitcoinTransaction record
-  const txTimestamp = new Date(timestampString);
-  let tx;
+  // 5. Apply transaction logic (lot/allocation rules)
   try {
-      tx = await db.bitcoinTransaction.create({
-    data: {
-      userId: userId,
-          timestamp: txTimestamp,
-      encryptedData: encryptedData,
-      type: transactionData.type,
-      amount: transactionData.amount,
-      price: transactionData.price,
-      fee: transactionData.fee,
-      wallet: transactionData.wallet,
-      tags: transactionData.tags,
-      notes: transactionData.notes,
-    },
-  });
-  } catch (createError) {
-       console.error(`Failed to create BitcoinTransaction record:`, createError);
-       throw new Error(`Database error during transaction creation.`);
-  }
-  
-  // 7. Call the refactored logic function
-  try {
-      const accountingMethod = (session.user.accountingMethod as CostBasisMethod | null) ?? CostBasisMethod.FIFO;
-      await _applyTransactionLogic(userId, tx.id, tx.timestamp, transactionData, accountingMethod);
-  } catch (logicError: any) {
-      console.error(`Error applying transaction logic for ${tx.id} (Tx record created but Lot/Allocation failed):`, logicError.message);
-      
-      if (logicError instanceof BadRequestError) {
-          throw logicError;
-      }
-      throw new Error(`Transaction created (ID: ${tx.id}) but failed during cost basis processing: ${logicError.message}`);
+    await _applyTransactionLogic(
+      userId,
+      txId,
+      new Date(wrapperParsed.data.timestamp),
+      transactionData,
+      accountingMethod
+    );
+  } catch (error: unknown) {
+    if (error instanceof BadRequestError || error instanceof LotSelectionError) {
+      throw error;
+    }
+    const errorMessage = isError(error) ? error.message : "Failed to apply transaction logic";
+    throw new DatabaseError(errorMessage);
   }
 
-  // 8. Return success with the created transaction ID
-  console.log(`Successfully processed transaction ${tx.id}`);
-  return { id: tx.id };
+  return { id: txId };
 }
 
 // --- Bulk Processing Logic Implementation ---
@@ -279,110 +298,88 @@ export type BulkResult = {
  * @param userId The ID of the user owning these transactions.
  * @param txIds An array of IDs for the BitcoinTransaction records already created.
  * @param encryptionPhrase The user's encryption passphrase.
+ * @param encryptionSalt The user's encryption salt.
  * @returns A Promise resolving to a BulkResult object.
  */
 export async function processBulkImportedTransactions(
   userId: string,
   txIds: string[],
   encryptionPhrase: string,
+  encryptionSalt: string,
 ): Promise<BulkResult> {
-  if (!txIds || txIds.length === 0) {
-    console.log("No transaction IDs provided for bulk processing.");
-    return { processed: 0, errors: [] };
-  }
   if (!encryptionPhrase) {
-     console.error(`Bulk processing cannot proceed for user ${userId}: Encryption phrase is missing.`);
-     // Return an error reflecting failure for all provided IDs
-     return {
-       processed: 0,
-       errors: txIds.map(id => ({ txId: id, message: "Encryption phrase missing" }))
-     };
+    return {
+      processed: 0,
+      errors: txIds.map(txId => ({ txId, message: "Encryption phrase missing" })),
+    };
   }
-
-  console.log(`Starting bulk processing for ${txIds.length} transactions for user ${userId}...`);
-
-  let key: CryptoKey;
-  try {
-     key = await generateEncryptionKey(encryptionPhrase);
-  } catch (keyError) {
-     console.error(`Bulk processing failed: Could not generate key for user ${userId}.`, keyError);
-     return {
-        processed: 0,
-        errors: txIds.map(id => ({ txId: id, message: "Key generation failed" }))
-     };
+  if (!encryptionSalt) {
+    return {
+      processed: 0,
+      errors: txIds.map(txId => ({ txId, message: "Encryption salt missing" })),
+    };
   }
+  function hexToBytes(hex: string): Uint8Array {
+    if (!hex) return new Uint8Array();
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < hex.length; i += 2) {
+      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+    }
+    return bytes;
+  }
+  const salt = hexToBytes(encryptionSalt);
+  const result: BulkResult = {
+    processed: 0,
+    errors: [],
+  };
 
-  // Fetch the user's accounting method separately (if needed and not passed in)
-  // Assuming it might be needed by _applyTransactionLogic
-  const user = await db.user.findUnique({
-      where: { id: userId },
-      select: { accountingMethod: true }
-  });
-  const accountingMethod = (user?.accountingMethod as CostBasisMethod | null) ?? CostBasisMethod.FIFO;
-
-  // Fetch all transactions at once
-  const transactions = await db.bitcoinTransaction.findMany({
-        where: {
-      id: { in: txIds },
-      userId: userId, // Ensure we only fetch transactions belonging to the user
-        },
+  for (const txId of txIds) {
+    try {
+      const tx = await db.bitcoinTransaction.findUnique({
+        where: { id: txId },
       });
 
-  let processedCount = 0;
-  const errorsResult: { txId: string; message: string }[] = [];
-
-  // Process each transaction sequentially (could be parallelized with Promise.all if logic is safe)
-  for (const tx of transactions) {
-    try {
-      if (!tx.encryptedData) {
-        throw new Error("Transaction record is missing encryptedData.");
+      if (!tx) {
+        result.errors.push({ txId, message: "Transaction not found" });
+        continue;
       }
 
-      // 1. Decrypt
-      const plaintextJson = await decryptString(tx.encryptedData, key);
-      const decryptedPayload = JSON.parse(plaintextJson);
-
-      // 2. Validate
-      const txParsed = transactionSchema.safeParse(decryptedPayload);
-      if (!txParsed.success) {
-        throw new Error(`Invalid decrypted data: ${JSON.stringify(txParsed.error.flatten().fieldErrors)}`);
-      }
-      const transactionData = txParsed.data;
+      const key = await generateEncryptionKey(encryptionPhrase, salt);
+      const decrypted = await decryptString(tx.encryptedData, key);
+      const parsed = transactionSchema.safeParse(JSON.parse(decrypted));
       
-      // 3. Update the main transaction record with decrypted fields (idempotent)
-      //    This avoids repeated decryption in the future.
-       if (tx.type !== transactionData.type || 
-           tx.amount !== transactionData.amount || 
-           tx.price !== transactionData.price ||
-           tx.fee !== transactionData.fee ||
-           tx.wallet !== transactionData.wallet ||
-           tx.notes !== transactionData.notes) { 
-            await db.bitcoinTransaction.update({
-                where: { id: tx.id },
-            data: {
-                    type: transactionData.type,
-                    amount: transactionData.amount,
-                    price: transactionData.price,
-                    fee: transactionData.fee,
-                    wallet: transactionData.wallet,
-                    notes: transactionData.notes,
-            },
-          });
-        }
+      if (!parsed.success) {
+        result.errors.push({ txId, message: `Invalid transaction data: ${parsed.error.message}` });
+        continue;
+      }
 
-      // 4. Apply the core logic (BUY/SELL -> Lot/Allocation)
-      await _applyTransactionLogic(userId, tx.id, tx.timestamp, transactionData, accountingMethod);
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { accountingMethod: true },
+      });
 
-      processedCount++;
-    } catch (error: any) {
-      console.error(`Bulk processing failed for transaction ${tx.id}:`, error.message);
-      errorsResult.push({ txId: tx.id, message: error.message || "Unknown processing error" });
-      // Continue to the next transaction
+      // Ensure accountingMethod is a valid CostBasisMethod
+      let accountingMethod: CostBasisMethod = CostBasisMethod.FIFO;
+      if (user?.accountingMethod && Object.values(CostBasisMethod).includes(user.accountingMethod as CostBasisMethod)) {
+        accountingMethod = user.accountingMethod as CostBasisMethod;
+      }
+
+      await _applyTransactionLogic(
+        userId,
+        txId,
+        tx.timestamp,
+        parsed.data,
+        accountingMethod
+      );
+
+      result.processed++;
+    } catch (error: unknown) {
+      const errorMessage = isError(error) ? error.message : "Unknown error processing transaction";
+      result.errors.push({ txId, message: errorMessage });
     }
   }
 
-  console.log(`Bulk processing finished for user ${userId}. Processed: ${processedCount}, Errors: ${errorsResult.length}`);
-  return { processed: processedCount, errors: errorsResult };
+  return result;
 }
 
 // export type BulkResult = { ... };

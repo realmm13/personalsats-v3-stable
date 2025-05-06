@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
-export const useScrolledPast = (threshold: number = 0) => {
+export const useScrolledPast = (threshold = 0) => {
   const [isScrolledPast, setIsScrolledPast] = useState(false);
 
   useEffect(() => {

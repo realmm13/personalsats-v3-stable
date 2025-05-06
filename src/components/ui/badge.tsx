@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import { tv } from "tailwind-variants";
-import { ReactFC, Size, cn } from "@/lib/utils";
+import { type ReactFC, type Size, cn } from "@/lib/utils";
 
 const badge = tv({
   base: "v center rounded-md font-semibold transition-colors",

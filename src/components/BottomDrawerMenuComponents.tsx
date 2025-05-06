@@ -1,5 +1,5 @@
 import React from "react";
-import { ReactFC, cn } from "@/lib/utils";
+import { type ReactFC, cn } from "@/lib/utils";
 
 // Label
 export interface BottomDrawerMenuLabelProps {

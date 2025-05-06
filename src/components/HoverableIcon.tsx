@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { LucideIcon } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ReactFC, Size } from "@/lib/utils";
+import { type ReactFC, type Size } from "@/lib/utils";
 import { ConditionalTooltip } from "@/components/ConditionalTooltip";
 import { useLinkableComponent } from "@/hooks/useLinkableComponent";
 

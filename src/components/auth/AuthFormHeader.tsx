@@ -1,6 +1,6 @@
 "use client";
 import { CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ReactNode } from "react";
+import { type ReactNode } from "react";
 
 interface AuthFormHeaderProps {
   title: ReactNode;

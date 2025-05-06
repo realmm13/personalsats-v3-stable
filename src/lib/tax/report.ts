@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { differenceInDays } from 'date-fns';
 import type { Lot, Allocation, BitcoinTransaction } from "@prisma/client";
-import { CostBasisMethod, selectLotsForSale, SaleResult, AvailableLot } from "@/lib/cost-basis"; // Import necessary types
+import { type CostBasisMethod, selectLotsForSale, type SaleResult, type AvailableLot } from "@/lib/cost-basis"; // Import necessary types
 
 // Define the structure for the dynamically generated report
 export interface TaxReport {
@@ -75,7 +75,7 @@ export async function generateTaxReport(
 
   // 2. Simulate lot inventory and process sales
   const currentLots: AvailableLot[] = [];
-  let lotCounter = 0; // Simple counter for temporary lot IDs during simulation
+  const lotCounter = 0; // Simple counter for temporary lot IDs during simulation
 
   for (const tx of transactions) {
     if (tx.type === 'buy' && tx.amount && tx.price) {
@@ -124,10 +124,10 @@ export async function generateTaxReport(
         }
          // Remove fully depleted lots from main inventory
          // @ts-ignore: remaining is guaranteed non-null by SelectedLot/AvailableLot interfaces
-         const depletedLotIds = saleResult.selectedLots.filter(l => l.remaining! <= 1e-8).map(l => l.id);
+         const depletedLotIds = saleResult.selectedLots.filter(l => l.remaining <= 1e-8).map(l => l.id);
          for (let i = currentLots.length - 1; i >= 0; i--) {
               // @ts-ignore: remaining is guaranteed non-null by AvailableLot interface
-              if (depletedLotIds.includes(currentLots[i].id) && currentLots[i].remaining! <= 1e-8) {
+              if (depletedLotIds.includes(currentLots[i].id) && currentLots[i].remaining <= 1e-8) {
                   currentLots.splice(i, 1);
               }
           }
@@ -143,12 +143,12 @@ export async function generateTaxReport(
             for(const selected of saleResult.selectedLots) {
                 // Use non-null assertions (!) to assure TS these are defined,
                 // based on the guarantee from selectLotsForSale and SelectedLot interface.
-               const costBasis = selected.costBasis!;
-               const proceeds = selected.proceeds!;
-               const gain = selected.realizedGain!;
-               const amountUsed = selected.amountUsed!;
-               const isLongTerm = selected.isLongTerm!;
-               const purchaseDate = selected.purchaseDate!;
+               const costBasis = selected.costBasis;
+               const proceeds = selected.proceeds;
+               const gain = selected.realizedGain;
+               const amountUsed = selected.amountUsed;
+               const isLongTerm = selected.isLongTerm;
+               const purchaseDate = selected.purchaseDate;
                
                totalSaleCostBasis += costBasis;
                totalSaleProceeds += proceeds;

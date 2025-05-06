@@ -1,19 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from "@/server/auth";
 import { db } from "@/server/db";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await auth.api.getSession({ headers: req.headers });
-
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Only select decrypted fields
     const transaction = await db.bitcoinTransaction.findUnique({
       where: {
         id: params.id,
         userId: session.user.id, // Ensure user owns the transaction
+      },
+      select: {
+        id: true,
+        userId: true,
+        timestamp: true,
+        type: true,
+        amount: true,
+        asset: true,
+        price: true,
+        priceAsset: true,
+        fee: true,
+        feeAsset: true,
+        wallet: true,
+        counterparty: true,
+        tags: true,
+        notes: true,
+        exchangeTxId: true,
+        // Do NOT include encryptedData
       },
     });
 

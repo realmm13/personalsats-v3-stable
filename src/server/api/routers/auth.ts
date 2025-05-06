@@ -23,7 +23,7 @@ export const authRouter = createTRPCRouter({
           },
         });
 
-        if (!account || !account.password) {
+        if (!account?.password) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "No password-based account found",

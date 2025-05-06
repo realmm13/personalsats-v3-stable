@@ -1,11 +1,11 @@
 "use client";
 
 import React from "react";
-import { cn, SelectOption } from "@/lib/utils";
+import { cn, type SelectOption } from "@/lib/utils";
 import { tv, type VariantProps } from "tailwind-variants";
 import { useKitzeUI } from "@/components/KitzeUIContext";
-import { SimpleSelect, SelectMobileViewType } from "@/components/SimpleSelect";
-import { LucideIcon } from "lucide-react";
+import { SimpleSelect, type SelectMobileViewType } from "@/components/SimpleSelect";
+import { type LucideIcon } from "lucide-react";
 
 export type SegmentedControlMobileViewType = "keep" | SelectMobileViewType;
 

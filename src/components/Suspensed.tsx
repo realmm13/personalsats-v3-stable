@@ -1,5 +1,5 @@
 "use client";
-import { ReactNode, Suspense } from "react";
+import { type ReactNode, Suspense } from "react";
 import { Spinner } from "./Spinner";
 
 interface SuspensedProps {

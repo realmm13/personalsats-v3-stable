@@ -33,7 +33,7 @@ interface TransactionsTableProps {
 }
 
 // Helper to format currency conditionally
-const formatCurrency = (value: number | null | undefined, currency: string = 'USD') => {
+const formatCurrency = (value: number | null | undefined, currency = 'USD') => {
   if (typeof value !== 'number') return '–';
   // Basic USD formatting, enhance as needed
   return currency === 'USD' 

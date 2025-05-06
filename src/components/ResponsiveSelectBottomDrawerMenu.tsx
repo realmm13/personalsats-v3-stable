@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { SelectOption } from "@/lib/utils";
+import { type SelectOption } from "@/lib/utils";
 import { BottomDrawerMenu } from "@/components/BottomDrawerMenu";
 import { BottomDrawerMenuItem } from "@/components/BottomDrawerMenuItem";
 import { SearchBar } from "@/components/SearchBar";

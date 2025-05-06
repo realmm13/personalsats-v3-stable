@@ -1,19 +1,7 @@
-import { authClient } from "@/server/auth/client";
 import { api } from "@/trpc/react";
+import type { CurrentUser } from "@/lib/types";
 
-export const useCurrentUser = () => {
-  const { data: session } = authClient.useSession();
-  const {
-    data: user,
-    isLoading,
-    isError,
-  } = api.user.getCurrentUser.useQuery(undefined, { enabled: !!session?.user });
-
-  // Decide what to return during loading or error states
-  // Returning undefined seems reasonable, but adjust if needed
-  if (isLoading || isError) {
-    return undefined;
-  }
-
-  return user;
-};
+export function useCurrentUser() {
+  const { data: user, isLoading, isError } = api.user.getCurrentUser.useQuery();
+  return { user, isLoading, isError };
+}

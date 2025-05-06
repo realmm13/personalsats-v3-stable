@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Link as LinkType } from "@/config/links";
+import { type Link as LinkType } from "@/config/links";
 import { motion } from "framer-motion";
 import { filterEnabledLinks } from "@/lib/linkUtils";
 

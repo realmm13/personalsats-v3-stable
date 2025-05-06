@@ -4,11 +4,11 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import {
   SegmentedControl,
-  SegmentedControlOption,
-  SegmentedControlMobileViewType,
+  type SegmentedControlOption,
+  type SegmentedControlMobileViewType,
 } from "@/components/SegmentedControl";
 import { motion, AnimatePresence } from "framer-motion";
-import { LucideIcon } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface TabPanelProps {

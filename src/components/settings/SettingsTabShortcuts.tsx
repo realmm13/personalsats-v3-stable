@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { KbdShortcutsList } from "@/components/KbdShortcutsList";
-import { hotkeys, userHotkeys, Hotkey } from "@/config/hotkeys";
+import { hotkeys, userHotkeys, type Hotkey } from "@/config/hotkeys";
 import { SettingsPanel } from "./SettingsPanel";
 
 export function SettingsTabShortcuts() {

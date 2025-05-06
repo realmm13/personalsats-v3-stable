@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
-import { Message } from "ai";
+import { type Message } from "ai";
 import { motion } from "framer-motion";
 import { Bot, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";

@@ -1,8 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
-import { PropsWithChildren } from "react";
+import { type PropsWithChildren } from "react";
 import { twMerge } from "tailwind-merge";
 import { format } from "date-fns";
-import { LucideIcon } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

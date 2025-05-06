@@ -1,5 +1,5 @@
 import React from "react";
-import { ReactFC } from "@/lib/utils";
+import { type ReactFC } from "@/lib/utils";
 import { DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { ContextMenuLabel } from "@/components/ui/context-menu";
 import { useMenuContext } from "@/components/MenuContext";

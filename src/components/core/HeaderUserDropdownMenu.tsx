@@ -1,7 +1,7 @@
 import { CommonMenuItem } from "@/components/CommonMenuItem";
 import { Settings, UserCog, Crown } from "lucide-react";
 import { LogoutMenuItem } from "@/components/auth/LogoutMenuItem";
-import { LucideIcon } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 import { useSettingsDialog } from "@/hooks/useSettingsDialog";
 import { useDialog } from "@/components/DialogManager";
 import { EditEntityDialog } from "@/components/EditEntityDialog";

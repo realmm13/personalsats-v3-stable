@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+import { type Metadata } from "next";
 import { APP_NAME } from "@/config/config";
 import PricingPlans from "@/components/pricing/PricingPlans";
 import { CustomButton } from "@/components/CustomButton";

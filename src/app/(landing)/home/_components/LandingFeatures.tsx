@@ -12,7 +12,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { APP_NAME } from "@/config/config";
 import { CardWithIcon } from "@/components/CardWithIcon";
-import { GradientType } from "@/components/CardIcon";
+import { type GradientType } from "@/components/CardIcon";
 import LandingSectionTitle from "./LandingSectionTitle";
 
 export default function LandingFeatures() {

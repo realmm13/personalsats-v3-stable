@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { unstable_ViewTransition as ViewTransition } from "react";
-import { Post } from "@/lib/posts";
+import { type Post } from "@/lib/posts";
 import { formatDate } from "@/lib/utils";
 
 interface PostCardProps {

@@ -1,7 +1,7 @@
 import {
   LucideBookOpen,
   LucideCreditCard,
-  LucideIcon,
+  type LucideIcon,
   LucideInfo,
   LucideHome,
   LucideFileText,

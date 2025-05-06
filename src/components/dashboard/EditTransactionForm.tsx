@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm, FormProvider, SubmitHandler } from "react-hook-form";
+import { useForm, FormProvider, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { FormFieldInput } from "@/components/FormFieldInput";
@@ -110,7 +110,7 @@ export function EditTransactionForm({ transaction, onSuccess, onCancel }: EditTr
       let errorMsg = "Something went wrong. Please try again.";
       try {
         const errorData = await response.json();
-        if (errorData && errorData.error) {
+        if (errorData?.error) {
           errorMsg = errorData.error;
         }
       } catch (jsonError) {

@@ -2,7 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { AuthFormHeader } from "@/components/auth/AuthFormHeader";
-import { ReactNode } from "react";
+import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface AnimatedFormWrapperProps {

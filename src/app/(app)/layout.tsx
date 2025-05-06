@@ -11,6 +11,8 @@ import { userHotkeys } from "@/config/hotkeys";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useIsImpersonating } from "@/hooks/useIsImpersonating";
 import AppHeader from '@/components/core/AppHeader';
+import { Spinner } from '@/components/Spinner';
+import { CustomButton } from '@/components/CustomButton';
 
 // Define steps for onboarding
 const onboardingSteps: OnboardingStep[] = [
@@ -22,7 +24,20 @@ const onboardingSteps: OnboardingStep[] = [
           Welcome to {APP_NAME}!
         </h1>
         <p className="mx-auto max-w-md text-lg text-white drop-shadow">
-          Let's get you started with your new app.
+          Your secure, encrypted Bitcoin transaction manager.
+        </p>
+      </div>
+    ),
+  },
+  {
+    key: "encryption",
+    content: ({}) => (
+      <div className="text-center">
+        <h1 className="mb-4 text-3xl font-bold text-white drop-shadow-lg">
+          Secure Your Data
+        </h1>
+        <p className="mx-auto max-w-md text-lg text-white drop-shadow">
+          We'll help you set up end-to-end encryption for your transactions. Your data stays private and secure.
         </p>
       </div>
     ),
@@ -43,11 +58,14 @@ const onboardingSteps: OnboardingStep[] = [
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = useCurrentUser();
+  const { user, isLoading, isError } = useCurrentUser();
   const { isImpersonating } = useIsImpersonating();
   const showOnboarding = user && !user.onboarded && !isImpersonating;
-  // console.log("🟩 DASH layout rendering");
-  // console.log("🔥 dashboard layout rendering header?");
+
+  if (isLoading) return <Spinner />;
+  if (isError) return <div className="text-center text-red-500">Error loading user.</div>;
+  if (!user) return <div className="text-center"><CustomButton>Sign In</CustomButton></div>;
+
   return (
     <>
       {/* global hotkeys that apply only when user is logged in */}

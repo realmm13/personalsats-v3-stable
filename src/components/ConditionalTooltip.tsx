@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ReactFC } from "@/lib/utils";
+import { type ReactFC } from "@/lib/utils";
 import { SimpleTooltip } from "@/components/SimpleTooltip";
 
 interface ConditionalTooltipClassNames {

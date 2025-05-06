@@ -1,12 +1,12 @@
 "use client";
 import { useTheme } from "next-themes";
-import { ReactFC } from "@/lib/utils";
+import { type ReactFC } from "@/lib/utils";
 import { useMounted } from "@/hooks/useMounted";
 import {
   ThemeSwitchMinimal,
-  ThemeSwitchMinimalClassNames,
+  type ThemeSwitchMinimalClassNames,
 } from "@/components/ThemeSwitchMinimal";
-import { CustomButtonProps } from "@/components/CustomButton";
+import { type CustomButtonProps } from "@/components/CustomButton";
 import { motion } from "framer-motion";
 
 export interface ThemeSwitchMinimalNextThemesProps {

@@ -5,7 +5,6 @@ import { useEncryption } from "@/context/EncryptionContext";
 import { Input } from "@/components/ui/input";
 import { CustomButton } from "@/components/CustomButton";
 import { Loader2 } from "lucide-react";
-import { generateEncryptionKey, decryptString } from "@/lib/encryption";
 import { toast } from "sonner";
 
 interface PassphrasePromptProps {

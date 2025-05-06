@@ -1,5 +1,5 @@
-import { Message } from "ai";
-import { useRef, useEffect, RefObject } from "react";
+import { type Message } from "ai";
+import { useRef, useEffect, type RefObject } from "react";
 import { AIChatMessage } from "./AIChatMessage";
 import { AiChatStarterPrompts } from "./AiChatStarterPrompts";
 import { cn } from "@/lib/utils";

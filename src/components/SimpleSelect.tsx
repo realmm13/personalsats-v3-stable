@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { SelectOption } from "@/lib/utils";
+import { type SelectOption } from "@/lib/utils";
 import { useKitzeUI } from "@/components/KitzeUIContext";
 import { useControlledOpen } from "@/hooks/useControlledOpen";
 import { ResponsiveSelectBottomDrawerMenu } from "@/components/ResponsiveSelectBottomDrawerMenu";

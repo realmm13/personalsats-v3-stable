@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { ReactFC } from "@/lib/utils";
-import { Spinner, SpinnerProps } from "@/components/Spinner";
+import { type ReactFC } from "@/lib/utils";
+import { Spinner, type SpinnerProps } from "@/components/Spinner";
 
 export interface FullPageSpinnerProps extends SpinnerProps {}
 

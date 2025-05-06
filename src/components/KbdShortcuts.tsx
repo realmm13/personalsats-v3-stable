@@ -1,6 +1,6 @@
 import * as React from "react";
-import { ReactFC, cn } from "@/lib/utils";
-import { Kbd, KbdClassNames } from "@/components/Kbd";
+import { type ReactFC, cn } from "@/lib/utils";
+import { Kbd, type KbdClassNames } from "@/components/Kbd";
 
 export interface KbdShortcutsProps {
   shortcuts: string[];

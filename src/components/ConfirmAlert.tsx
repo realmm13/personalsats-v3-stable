@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Alert, AlertProps } from "./Alert";
+import { Alert, type AlertProps } from "./Alert";
 import {
   AlertDialogAction,
   AlertDialogCancel,

@@ -3,9 +3,9 @@ import React from "react";
 import { Textarea } from "@/components/ui/textarea"; // Import Textarea
 import {
   FormFieldWrapper,
-  FormFieldWrapperProps,
+  type FormFieldWrapperProps,
 } from "@/components/FormFieldWrapper";
-import { FieldValues, FieldPath } from "react-hook-form";
+import { type FieldValues, type FieldPath } from "react-hook-form";
 
 export interface FormFieldTextareaProps<
   TFieldValues extends FieldValues = FieldValues,

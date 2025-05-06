@@ -1,6 +1,6 @@
-import { Job, JobProgress, Worker } from "bullmq";
+import { type Job, type JobProgress, Worker } from "bullmq";
 import { PrismaClient } from "@prisma/client";
-import { QUEUE_TYPES, WORKER_NAME, WorkerContext } from "./types";
+import { QUEUE_TYPES, WORKER_NAME, type WorkerContext } from "./types";
 import { bullConnection } from "./connection";
 import { serverEnv } from "@/env";
 

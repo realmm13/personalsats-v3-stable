@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-import { getAllPosts, getPostBySlug, Post } from "@/lib/posts";
+import { getAllPosts, getPostBySlug, type Post } from "@/lib/posts";
 import { formatDate } from "@/lib/utils";
 import { Mdx } from "@/components/blog/MdxComponents";
 import Link from "next/link";
-import { Metadata } from "next";
+import { type Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { unstable_ViewTransition as ViewTransition } from "react";
 

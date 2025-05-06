@@ -6,7 +6,7 @@ import {
   LucideLoaderPinwheel,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ReactFC } from "@/lib/utils";
+import { type ReactFC } from "@/lib/utils";
 
 const variants = {
   default: LucideLoader,

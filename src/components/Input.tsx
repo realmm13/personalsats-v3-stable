@@ -2,7 +2,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { ElementType, InputHTMLAttributes, ReactNode } from "react";
+import { type ElementType, type InputHTMLAttributes, type ReactNode } from "react";
 import { Spinner } from "@/components/Spinner";
 
 export interface InputClassNames {

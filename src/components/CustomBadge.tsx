@@ -1,6 +1,6 @@
 import * as React from "react";
 import { tv } from "tailwind-variants";
-import { cn, processColor, ReactFC } from "@/lib/utils";
+import { cn, processColor, type ReactFC } from "@/lib/utils";
 
 const badge = tv({
   base: "flex items-center justify-center gap-1.5 rounded-md font-semibold transition-colors",

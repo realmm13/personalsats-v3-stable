@@ -2,9 +2,9 @@ import React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   FormFieldWrapper,
-  FormFieldWrapperProps,
+  type FormFieldWrapperProps,
 } from "@/components/FormFieldWrapper";
-import { FieldValues, FieldPath } from "react-hook-form";
+import { type FieldValues, type FieldPath } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 

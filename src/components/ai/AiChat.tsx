@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, KeyboardEvent, FormEvent, useRef } from "react";
+import { useEffect, useState, type KeyboardEvent, type FormEvent, useRef } from "react";
 import { useChat } from "@ai-sdk/react";
 import { toast } from "sonner";
 import { AIChatConversation } from "./AIChatConversation";

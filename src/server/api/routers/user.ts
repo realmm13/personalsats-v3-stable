@@ -14,9 +14,9 @@ import {
 
 export const userRouter = createTRPCRouter({
   getCurrentUser: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
+    const userId = ctx.session?.user?.id;
     if (!userId) {
-      throw new TRPCError({ code: "UNAUTHORIZED" });
+      return null;
     }
 
     const user = await ctx.db.user.findUnique({
@@ -32,11 +32,12 @@ export const userRouter = createTRPCRouter({
         avatarImage: { select: { key: true } }, // Needed for getEnhancedUser
         coverImage: { select: { key: true } }, // Needed for getEnhancedUser
         onboarded: true, // Include the onboarding status
+        encryptionSalt: true,
       },
     });
 
     if (!user) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      return null;
     }
 
     const enhancedUser = getEnhancedUser(user);

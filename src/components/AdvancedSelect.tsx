@@ -22,7 +22,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { SelectOption } from "@/lib/utils";
+import { type SelectOption } from "@/lib/utils";
 
 /**
  * Variants for the advanced-select component to handle different styles.

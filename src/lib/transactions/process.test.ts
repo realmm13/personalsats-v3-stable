@@ -1,7 +1,7 @@
 import { processTransaction, BadRequestError } from "./process";
 import { db } from "@/lib/db";
 import { generateEncryptionKey, decryptString } from "@/lib/encryption";
-import { selectLotsForSale, CostBasisMethod } from "@/lib/cost-basis";
+import { selectLotsForSale, type CostBasisMethod } from "@/lib/cost-basis";
 import { transactionSchema } from "@/schemas/transaction-schema"; // Used implicitly via parsing
 
 // --- Mocking Setup ---

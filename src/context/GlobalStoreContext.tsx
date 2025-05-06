@@ -9,7 +9,7 @@ import React, {
 import { useDialog } from "@/components/DialogManager";
 import {
   EditEntityDialog,
-  EditEntityDialogProps,
+  type EditEntityDialogProps,
 } from "@/components/EditEntityDialog";
 
 type EditEntityInDialogOptions = Omit<EditEntityDialogProps, "close"> & {

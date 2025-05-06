@@ -2,7 +2,7 @@
 
 import React from "react";
 import { CommandItem } from "@/components/ui/command";
-import { LucideIcon } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export interface CommandPaletteItemProps

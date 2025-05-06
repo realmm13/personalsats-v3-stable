@@ -23,7 +23,7 @@ export function SwitchExamples() {
             size="xs"
             checked={states.xs}
             onCheckedChange={(checked) =>
-              setStates({ ...states, xs: checked as boolean })
+              setStates({ ...states, xs: checked })
             }
           />
         </div>
@@ -34,7 +34,7 @@ export function SwitchExamples() {
             size="sm"
             checked={states.sm}
             onCheckedChange={(checked) =>
-              setStates({ ...states, sm: checked as boolean })
+              setStates({ ...states, sm: checked })
             }
           />
         </div>
@@ -45,7 +45,7 @@ export function SwitchExamples() {
             size="md"
             checked={states.md}
             onCheckedChange={(checked) =>
-              setStates({ ...states, md: checked as boolean })
+              setStates({ ...states, md: checked })
             }
           />
         </div>
@@ -56,7 +56,7 @@ export function SwitchExamples() {
             size="lg"
             checked={states.lg}
             onCheckedChange={(checked) =>
-              setStates({ ...states, lg: checked as boolean })
+              setStates({ ...states, lg: checked })
             }
           />
         </div>
@@ -67,7 +67,7 @@ export function SwitchExamples() {
             size="xl"
             checked={states.xl}
             onCheckedChange={(checked) =>
-              setStates({ ...states, xl: checked as boolean })
+              setStates({ ...states, xl: checked })
             }
           />
         </div>

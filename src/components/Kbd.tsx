@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ReactFC, cn } from "@/lib/utils";
+import { type ReactFC, cn } from "@/lib/utils";
 
 export interface KbdClassNames {
   root?: string;

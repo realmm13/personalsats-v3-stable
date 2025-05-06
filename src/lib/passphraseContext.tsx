@@ -1,6 +1,6 @@
 "use client"; // Context needs to be client-side
 
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, type ReactNode, useCallback } from 'react';
 import { useEncryption } from '@/context/EncryptionContext'; // Import useEncryption
 import { toast } from 'sonner'; // For feedback
 

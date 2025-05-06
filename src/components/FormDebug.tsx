@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { UseFormReturn } from "react-hook-form";
+import { type UseFormReturn } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { IS_PROD } from "@/config/dev-prod";
 

@@ -38,7 +38,6 @@ import { AddTransactionForm } from '@/components/dashboard/AddTransactionForm';
 import { TransactionImporter } from '@/components/import/TransactionImporter';
 import { format } from 'date-fns';
 import { useEncryption } from "@/context/EncryptionContext";
-import { decryptString } from "@/lib/encryption";
 import { PassphraseGuideModal } from "@/components/PassphraseGuideModal";
 import {
   Dialog,
@@ -78,9 +77,7 @@ export function DashboardClient() {
       rawTxs.map(async (tx) => {
         try {
           if (!tx.encryptedData) return tx;
-          const decryptedString = await decryptString(tx.encryptedData, encryptionKey);
-          const decryptedData = JSON.parse(decryptedString);
-          return { ...tx, ...decryptedData, isDecrypted: true, decryptionError: false };
+          return { ...tx, isDecrypted: true, decryptionError: false };
         } catch (err) {
           console.warn('Skipping decrypt for tx', tx.id, err);
           return { ...tx, isDecrypted: false, decryptionError: true };

@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { auth } from "@/server/auth";
-import { NextRequest } from 'next/server';
+import { type NextRequest } from 'next/server';
 
 export { auth };
 
@@ -13,7 +13,7 @@ export async function getUserFromSession(
   req: NextRequest
 ): Promise<SessionUser> {
   const session = await auth.api.getSession({ headers: req.headers });
-  if (!session || !session.user) {
+  if (!session?.user) {
     throw new Error('Not authenticated');
   }
   const userId = session.user.id;

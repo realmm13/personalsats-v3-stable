@@ -8,7 +8,7 @@ import { FormFieldInput } from "@/components/FormFieldInput";
 import { FormFieldUploadThingImage } from "@/components/FormFieldUploadThingImage";
 import { FormFieldTextarea } from "@/components/FormFieldTextarea";
 import { UpdateProfileInput } from "@/types/user";
-import { z } from "zod";
+import { type z } from "zod";
 import { CustomButton } from "@/components/CustomButton";
 import type { InitialImageType } from "@/components/core/UploadThingUploadSingleImage/UploadThingUploadSingleImage";
 import { clientEnv } from "@/env/client";

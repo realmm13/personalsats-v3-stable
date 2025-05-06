@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { PageHeader, PageHeaderProps } from "@/components/PageHeader";
+import { PageHeader, type PageHeaderProps } from "@/components/PageHeader";
 import { HEADER_HEIGHT } from "@/config/config";
 
 type HeaderCustomizedProps = Omit<PageHeaderProps, "height" | "classNames"> & {

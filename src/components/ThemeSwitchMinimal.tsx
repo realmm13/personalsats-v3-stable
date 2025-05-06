@@ -1,6 +1,6 @@
 "use client";
-import { ReactFC } from "@/lib/utils";
-import { CustomButton, CustomButtonProps } from "@/components/CustomButton";
+import { type ReactFC } from "@/lib/utils";
+import { CustomButton, type CustomButtonProps } from "@/components/CustomButton";
 import { motion, AnimatePresence } from "framer-motion";
 import { LucideSun, LucideMoon, LucideComputer } from "lucide-react";
 import { cn } from "@/lib/utils";

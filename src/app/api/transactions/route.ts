@@ -38,88 +38,105 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get URL search parameters
-    const { searchParams } = new URL(request.url);
-    const filters = {
-      type: searchParams.get('type'),
-      minValue: searchParams.get('minValue'),
-      maxValue: searchParams.get('maxValue'),
-      // Get other filters
-      // wallet: searchParams.get('wallet'), 
-      // tag: searchParams.get('tag'),
-      // dateFrom: searchParams.get('dateFrom'),
-      // dateTo: searchParams.get('dateTo'),
-    };
-
-    // Validate filters (optional but recommended)
-    // const validationResult = filterSchema.safeParse(filters);
-    // if (!validationResult.success) {
-    //   return NextResponse.json({ error: "Invalid filter parameters", details: validationResult.error.flatten() }, { status: 400 });
-    // }
-    // const validatedFilters = validationResult.data;
-
-    // Build the Prisma where clause dynamically
-    const where: any = { userId: session.user.id }; // Start with user ID
-
-    // Filtering logic removed - fetching all user transactions
-    // Client-side will handle filtering after decryption
-
+    // Only select decrypted fields, no decryption logic
     const transactions = await db.bitcoinTransaction.findMany({
-      where, // Apply the dynamically built where clause (now just userId)
-      orderBy: {
-        timestamp: "desc",
+      where: { userId: session.user.id },
+      orderBy: { timestamp: "desc" },
+      select: {
+        id: true,
+        userId: true,
+        timestamp: true,
+        type: true,
+        amount: true,
+        asset: true,
+        price: true,
+        priceAsset: true,
+        fee: true,
+        feeAsset: true,
+        wallet: true,
+        counterparty: true,
+        tags: true,
+        notes: true,
+        exchangeTxId: true,
+        // Do NOT include encryptedData or any decryption
       },
     });
 
-    // Important Note on Decryption:
-    // This endpoint currently returns raw transactions, including the encryptedData blob.
-    // Filtering based on encrypted fields (like amount, fee, notes etc.) is NOT possible 
-    // at the database level here. If you need to filter by those, you must fetch
-    // all relevant transactions, decrypt them server-side or client-side, 
-    // and then apply the filter.
-    // Filtering here is limited to unencrypted fields (userId, timestamp, potentially price, type, tags, wallet IF stored unencrypted).
-
     return NextResponse.json(transactions);
-  } catch (error) {
-    console.error("Error fetching transactions:", error);
+  } catch (err: any) {
+    // Log the error for debugging
+    console.error("Error in /api/transactions GET:", err);
+
+    // Return the error message in the response for easier debugging
     return NextResponse.json(
-      { error: "Failed to fetch transactions" },
+      { error: "Failed to fetch transactions.", details: err?.message || err },
       { status: 500 }
     );
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
     const currentHeaders = await headers();
     const session = await auth.api.getSession({ headers: new Headers(currentHeaders) });
-    if (!session?.user?.id || !(session.user as any).encryptionPhrase) {
-        console.error("Unauthorized or incomplete session for POST", { userId: session?.user?.id, hasPhrase: !!(session?.user as any)?.encryptionPhrase });
-        return NextResponse.json({ error: "Unauthorized or session incomplete" }, { status: 401 });
+    if (!session || !session.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const body = await req.json();
+    console.log('POST /api/transactions payload:', body);
+
+    const {
+      encryptedData,
+      amount,
+      date,
+      price,
+      fee,
+      wallet,
+      tags,
+      notes,
+    } = body as {
+      encryptedData?: string;
+      amount?: number;
+      date?: string;
+      price?: number;
+      fee?: number;
+      wallet?: string;
+      tags?: string[];
+      notes?: string;
+    };
+
+    if (
+      typeof encryptedData !== 'string' ||
+      typeof amount !== 'number' ||
+      typeof date !== 'string'
+    ) {
+      console.error('Invalid payload fields:', { encryptedData, amount, date });
+      return NextResponse.json(
+        { error: 'Invalid payload' },
+        { status: 400 }
+      );
     }
 
-    const body = await request.json();
-
-    const result = await processTransaction(body, {
-        user: {
-            id: session.user.id,
-            encryptionPhrase: (session.user as any).encryptionPhrase,
-            accountingMethod: (session.user as any).accountingMethod
-        }
+    const tx = await db.bitcoinTransaction.create({
+      data: {
+        userId: session.user.id,
+        encryptedData,
+        amount,
+        timestamp: new Date(date),
+        price,
+        fee,
+        wallet,
+        tags: tags || [],
+        notes,
+      },
     });
 
-    return NextResponse.json({ id: result.id, status: "success" });
-
+    return NextResponse.json(tx);
   } catch (err: any) {
-    console.error("Error processing transaction:", err);
-    
-    if (err instanceof BadRequestError) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
-    }
-    
+    console.error('Error in POST /api/transactions:', err);
     return NextResponse.json(
-      { error: "Failed to process transaction due to an unexpected error." },
-      { status: 500 } 
+      { error: (err as Error).message },
+      { status: 500 }
     );
   }
 } 

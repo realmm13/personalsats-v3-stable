@@ -4,13 +4,13 @@ import React, {
   useContext,
   useReducer,
   useCallback,
-  ReactNode,
+  type ReactNode,
   useState,
 } from "react";
-import { ConfirmAlert, ConfirmAlertProps } from "./ConfirmAlert";
+import { ConfirmAlert, type ConfirmAlertProps } from "./ConfirmAlert";
 import {
   ConfirmAlertDelete,
-  ConfirmAlertDeleteProps,
+  type ConfirmAlertDeleteProps,
 } from "./ConfirmAlertDelete";
 
 // Alert Types
@@ -198,7 +198,7 @@ export const AlertRenderer = React.memo(() => {
           handleOpenChange(alert.id, open);
 
         if (alert.type === "confirm") {
-          const { props } = alert as ConfirmAlertData;
+          const { props } = alert;
 
           return (
             <ConfirmAlert
@@ -211,7 +211,7 @@ export const AlertRenderer = React.memo(() => {
         }
 
         if (alert.type === "delete") {
-          const { props } = alert as DeleteAlertData;
+          const { props } = alert;
 
           return (
             <ConfirmAlertDelete

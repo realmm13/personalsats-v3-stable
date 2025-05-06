@@ -1,4 +1,4 @@
-import { allPosts, Post } from "contentlayer/generated"; // Import from the standard Contentlayer generated path
+import { allPosts, type Post } from "contentlayer/generated"; // Import from the standard Contentlayer generated path
 
 export type { Post };
 

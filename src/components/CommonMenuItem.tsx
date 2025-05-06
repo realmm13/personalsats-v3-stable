@@ -1,15 +1,15 @@
 import React from "react";
-import { ReactFC } from "@/lib/utils";
+import { type ReactFC } from "@/lib/utils";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ContextMenuItem } from "@/components/ui/context-menu";
 import { DropdownMenuShortcut } from "@/components/ui/dropdown-menu";
 import { ContextMenuShortcut } from "@/components/ui/context-menu";
 import {
   useLinkableComponent,
-  LinkableProps,
+  type LinkableProps,
 } from "@/hooks/useLinkableComponent";
 import { cn } from "@/lib/utils";
-import { LucideIcon } from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 import { useMenuContext } from "@/components/MenuContext";
 import { BottomDrawerMenuItem } from "@/components/BottomDrawerMenuItem";
 import { HelpInfoCircle } from "@/components/HelpInfoCircle";

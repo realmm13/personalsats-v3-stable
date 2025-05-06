@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import * as React from "react";
+import type * as React from "react";
 
 export interface LinkableProps extends React.HTMLAttributes<HTMLElement> {
   href?: string;

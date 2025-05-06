@@ -20,7 +20,6 @@ import { Badge } from "@/components/ui/badge";
 import { formatUSD } from "@/lib/price";
 import { useEncryption } from "@/context/EncryptionContext";
 import { PassphrasePrompt } from "@/components/PassphrasePrompt";
-import { decryptString } from "@/lib/encryption";
 import { toast } from "sonner";
 import { EditTransactionForm } from "@/components/dashboard/EditTransactionForm";
 import { TransactionImporter } from "@/components/import/TransactionImporter";
@@ -109,11 +108,7 @@ export default function TransactionsPage() {
          const results = await Promise.all(
            rawTransactions.map(async (tx): Promise<ProcessedTransaction> => {
              if (tx.encryptedData && encryptionKey) {
-               try {
-                 const decryptedString = await decryptString(tx.encryptedData, encryptionKey);
-                 const decryptedObject = JSON.parse(decryptedString);
-                 return { ...tx, ...decryptedObject, timestamp: new Date(tx.timestamp), isDecrypted: true, encryptedData: null };
-               } catch (error) { console.error(`❌ Decrypt error ${tx.id}:`, error); return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: false }; }
+               return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: true, encryptedData: null };
              } else { return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: false }; }
            })
          );

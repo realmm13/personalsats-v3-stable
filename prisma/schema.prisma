@@ -56,6 +56,9 @@ model User {
   // Add the new field for accounting method
   accountingMethod String @default("HIFO") // Options: FIFO, LIFO, HIFO
 
+  // New: per-user encryption salt for client-side key derivation
+  encryptionSalt String?
+
   bitcoinTransactions BitcoinTransaction[]
   dailySnapshots      DailySnapshot[]
 
@@ -124,33 +127,32 @@ model UTImage {
 }
 
 model BitcoinTransaction {
-  id            String    @id @default(cuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  timestamp     DateTime
-  type          String?
-  amount        Float?
-  asset         String    @default("BTC")
-  price         Float?
-  priceAsset    String?   @default("USD")
-  fee           Float?
-  feeAsset      String?   // Asset the fee was paid in (e.g., "USD", "BTC"). Optional in DB schema.
-  wallet        String?   // Wallet/Exchange name. Optional in DB schema.
-  counterparty  String?   // Optional: P2P peer, specific exchange details, etc.
-  tags          String[]  // User-defined tags (remains unencrypted for filtering).
-  notes         String?   // Optional notes. Optional in DB schema.
-  exchangeTxId  String?   // Optional: Original transaction ID from the exchange/source.
-
-  encryptedData String?   @db.Text // Stores the encrypted blob of sensitive fields (type, amount, price, fee, wallet, notes etc.)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  allocations   Allocation[] @relation("TxAllocations")
-  lots          Lot[]        @relation("TxLots")
-
-  @@index([userId, timestamp]) // Index for common queries by user and date.
-  // @@map("bitcoin_transactions") // Assuming no explicit map or it matches this name
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timestamp        DateTime
+  type             String?
+  amount           Float?
+  asset            String    @default("BTC")
+  price            Float?
+  priceAsset       String?   @default("USD")
+  fee              Float?
+  feeAsset         String?
+  wallet           String?
+  counterparty     String?
+  tags             String[]
+  notes            String?
+  exchangeTxId     String?
+  encryptedData    String?   @db.Text
+  encryptionVersion Int      @default(1)
+  encryptionNonce   String?
+  encryptionError   Boolean  @default(false)
+  encryptionKeyId   String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  allocations      Allocation[] @relation("TxAllocations")
+  lots             Lot[]        @relation("TxLots")
+  @@index([userId, timestamp])
 }
 
 // --- Model for Historical Prices ---

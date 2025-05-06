@@ -48,7 +48,7 @@ function TaxPageContent() {
 
   const { data: report, isLoading: isLoadingReport, error, refetch } = api.tax.getReportByYear.useQuery({
     year: selectedYear,
-    method: selectedMethod as CostBasisMethod,
+    method: selectedMethod,
   }, {
     // Enable only when prerequisites are met (settings loaded, price available)
     enabled: !isLoadingSettings && !!userSettings && !!currentBtcPrice,
@@ -206,7 +206,7 @@ function TaxPageContent() {
             <>
               <TableBody>
                 {/* Conditionally render placeholder row or data rows */}
-                {!report || !report.details || report.details.length === 0 ? (
+                {!report?.details || report.details.length === 0 ? (
                   <TableRow> {/* Wrap message in TableRow */}
                     <TableCell
                       colSpan={6} /* Match number of columns */

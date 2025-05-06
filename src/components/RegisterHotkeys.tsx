@@ -1,7 +1,7 @@
 "use client";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useTheme } from "next-themes";
-import { Hotkey, HotkeyId } from "@/config/hotkeys";
+import { type Hotkey, type HotkeyId } from "@/config/hotkeys";
 import { useAiChatDialog } from "@/hooks/useAiChatDialog";
 import { useGlobalStore } from "@/context/GlobalStoreContext";
 
