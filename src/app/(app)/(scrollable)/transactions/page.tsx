@@ -183,14 +183,52 @@ export default function TransactionsPage() {
   };
 
   // --- Loading / Error / Empty States ---
-  if (!isKeySet) return <PassphrasePrompt sampleEncryptedData={rawTransactions?.find(tx => tx.encryptedData)?.encryptedData} />;
-  if (swrError) return <div className="text-center text-muted-foreground py-8">Failed to load transactions data. Please try again.</div>; // Centered error
-  if (swrLoading || (isProcessing && processedTransactions.length === 0)) return <div className="flex justify-center py-8"><Spinner size="lg"/></div>; // Centered spinner
+  if (!isKeySet) {
+    const sampleEncryptedData = rawTransactions && Array.isArray(rawTransactions)
+      ? rawTransactions.map(tx => tx.encryptedData).find(val => typeof val === 'string')
+      : undefined;
+    return <><PassphrasePrompt sampleEncryptedData={sampleEncryptedData} />
+      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+        <DialogContent className="sm:max-w-xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Import Transactions from CSV</DialogTitle></DialogHeader>
+          <TransactionImporter 
+            onSuccess={handleImportComplete} 
+            onCancel={handleCloseImportModal} 
+            isKeySet={isKeySet}
+            encryptionKey={encryptionKey}
+          />
+        </DialogContent>
+      </Dialog></>;
+  }
+  if (swrError) return <><div className="text-center text-muted-foreground py-8">Failed to load transactions data. Please try again.</div>
+    <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+      <DialogContent className="sm:max-w-xl overflow-y-auto">
+        <DialogHeader><DialogTitle>Import Transactions from CSV</DialogTitle></DialogHeader>
+        <TransactionImporter 
+          onSuccess={handleImportComplete} 
+          onCancel={handleCloseImportModal} 
+          isKeySet={isKeySet}
+          encryptionKey={encryptionKey}
+        />
+      </DialogContent>
+    </Dialog></>;
+  if (swrLoading || (isProcessing && processedTransactions.length === 0)) return <><div className="flex justify-center py-8"><Spinner size="lg"/></div>
+    <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+      <DialogContent className="sm:max-w-xl overflow-y-auto">
+        <DialogHeader><DialogTitle>Import Transactions from CSV</DialogTitle></DialogHeader>
+        <TransactionImporter 
+          onSuccess={handleImportComplete} 
+          onCancel={handleCloseImportModal} 
+          isKeySet={isKeySet}
+          encryptionKey={encryptionKey}
+        />
+      </DialogContent>
+    </Dialog></>;
   const showNoTransactions = !isProcessing && 
                               ((!rawTransactions || rawTransactions.length === 0) || 
                                (processedTransactions.length > 0 && filteredTransactions.length === 0));
   if (showNoTransactions) 
-      return (
+      return (<>
           <div className="container py-8 space-y-6">
              {/* Render header and filters even when empty */} 
              <div className="flex items-center justify-between">
@@ -266,7 +304,18 @@ export default function TransactionsPage() {
                </AlertDialogContent>
              </AlertDialog>
           </div>
-       );
+          <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+            <DialogContent className="sm:max-w-xl overflow-y-auto">
+              <DialogHeader><DialogTitle>Import Transactions from CSV</DialogTitle></DialogHeader>
+              <TransactionImporter 
+                onSuccess={handleImportComplete} 
+                onCancel={handleCloseImportModal} 
+                isKeySet={isKeySet}
+                encryptionKey={encryptionKey}
+              />
+            </DialogContent>
+          </Dialog>
+        </>);
   if (!isKeySet && processedTransactions.length === 0 && rawTransactions && rawTransactions.length > 0) 
       return <div className="text-center text-muted-foreground py-8">Enter passphrase to view details.</div>;
 
@@ -312,17 +361,6 @@ export default function TransactionsPage() {
       />
 
       {/* Dialogs */} 
-      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
-        <DialogContent className="sm:max-w-xl overflow-y-auto">
-          <DialogHeader><DialogTitle>Import Transactions from CSV</DialogTitle></DialogHeader>
-          <TransactionImporter 
-            onSuccess={handleImportComplete} 
-            onCancel={handleCloseImportModal} 
-            isKeySet={isKeySet}
-            encryptionKey={encryptionKey}
-          />
-        </DialogContent>
-      </Dialog>
       <AlertDialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
          <AlertDialogContent>
             <AlertDialogHeader>

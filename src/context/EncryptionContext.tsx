@@ -95,7 +95,7 @@ export const EncryptionProvider = ({ children }: { children: ReactNode }) => {
     async (passphrase: string): Promise<boolean> => {
       setIsLoadingKey(true);
       setKeyError(null);
-      try {
+      try {yes
         if (!passphrase) {
           throw new Error("Passphrase cannot be empty.");
         }
