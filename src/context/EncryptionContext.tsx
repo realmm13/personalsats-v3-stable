@@ -95,15 +95,16 @@ export const EncryptionProvider = ({ children }: { children: ReactNode }) => {
     async (passphrase: string): Promise<boolean> => {
       setIsLoadingKey(true);
       setKeyError(null);
-      try {yes
+      try {
         if (!passphrase) {
           throw new Error("Passphrase cannot be empty.");
         }
         if (!user) {
-          throw new Error("User not loaded.");
+          throw new Error("deriveAndSetKey: no authenticated user");
         }
         let salt: Uint8Array;
         let saltHex: string = typeof user?.encryptionSalt === 'string' ? user.encryptionSalt : '';
+        console.log('[EncryptionContext] Using salt:', saltHex, 'and passphrase:', passphrase);
         if (!saltHex) {
           // Generate salt, POST to /api/user/setSalt, and use it
           const generatedSalt = crypto.getRandomValues(new Uint8Array(16));
@@ -119,11 +120,13 @@ export const EncryptionProvider = ({ children }: { children: ReactNode }) => {
         const key = await generateEncryptionKey(passphrase, salt);
         await setKeyAndPersist(key);
         setEncryptionPhrase(passphrase);
+        console.log('[EncryptionContext] deriveAndSetKey -> success');
         return true;
       } catch (error) {
         setKeyError(error instanceof Error ? error.message : "Failed to derive key.");
         await setKeyAndPersist(null);
         setEncryptionPhrase(null);
+        console.error('[EncryptionContext] deriveAndSetKey -> failed', error);
         return false;
       }
     },

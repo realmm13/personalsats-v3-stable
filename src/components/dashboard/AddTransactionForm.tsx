@@ -95,14 +95,14 @@ export function AddTransactionForm({ onSuccess }: AddTransactionFormProps) {
       console.log('🔑 encryptedData:', encryptedData);
       const payload = {
         id: tx.id,
-        amount: Number(tx.amount),
+        encryptedData,
+        amount: tx.amount,
         date: tx.timestamp,
-        price: Number(tx.price),
-        fee: Number(tx.fee),
+        price: tx.price,
+        fee: tx.fee,
         wallet: tx.wallet,
         tags: tx.tags,
         notes: tx.notes,
-        encryptedData,
       };
       console.log('🚀 payload:', payload);
       await submitTransaction(payload);

@@ -99,36 +99,55 @@ export default function TransactionsPage() {
   const { data: rawTransactions, error: swrError, isLoading: swrLoading, mutate: mutateTransactions } = 
     useSWR<Transaction[]>(apiUrl, fetcher);
 
-  // --- Decryption Effect ---
-  useEffect(() => {
-    const processAndDecrypt = async () => {
-       if (!rawTransactions || !isKeySet || !encryptionKey) { setProcessedTransactions([]); return; }
-       setIsProcessing(true);
-       try {
-         const results = await Promise.all(
-           rawTransactions.map(async (tx): Promise<ProcessedTransaction> => {
-             if (tx.encryptedData && encryptionKey) {
-               return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: true, encryptedData: null };
-             } else { return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: false }; }
-           })
-         );
-         setProcessedTransactions(results);
-       } catch (processingError) { console.error("Error processing:", processingError); }
-       finally { setIsProcessing(false); }
-    };
-    processAndDecrypt();
-  }, [rawTransactions, encryptionKey, isKeySet]);
-
   // --- Client-Side Filtering --- 
   const filteredTransactions = useMemo(() => {
+    console.log('Processing transactions:', processedTransactions);
     return processedTransactions.filter(tx => {
-      if (!tx.isDecrypted) return false;
+      // Don't filter out undecrypted transactions
       if (typeFilter !== 'all' && tx.type !== typeFilter) return false;
       if (minAmount && (typeof tx.amount !== 'number' || tx.amount < parseFloat(minAmount))) return false;
       if (maxAmount && (typeof tx.amount !== 'number' || tx.amount > parseFloat(maxAmount))) return false;
       return true; 
     });
   }, [processedTransactions, typeFilter, minAmount, maxAmount]); 
+
+  // --- Decryption Effect ---
+  useEffect(() => {
+    const processAndDecrypt = async () => {
+       if (!rawTransactions || !isKeySet || !encryptionKey) { 
+         console.log('Missing requirements:', { hasRawTx: !!rawTransactions, isKeySet, hasKey: !!encryptionKey });
+         setProcessedTransactions([]); 
+         return; 
+       }
+       setIsProcessing(true);
+       try {
+         console.log('Starting decryption of', rawTransactions.length, 'transactions');
+         const results = await Promise.all(
+           rawTransactions.map(async (tx): Promise<ProcessedTransaction> => {
+             if (tx.encryptedData && encryptionKey) {
+               try {
+                 const decrypted = await import('@/lib/opensecret').then(m => m.decryptTx(tx.encryptedData as string, encryptionKey));
+                 return { ...tx, ...decrypted, timestamp: new Date(tx.timestamp), isDecrypted: true };
+               } catch (e) {
+                 console.error('Decryption failed for tx:', tx.id, e);
+                 return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: false };
+               }
+             } else { 
+               console.log('No encryptedData for tx:', tx.id);
+               return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: false }; 
+             }
+           })
+         );
+         console.log('Decryption complete, results:', results);
+         setProcessedTransactions(results);
+       } catch (processingError) { 
+         console.error("Error processing:", processingError); 
+       } finally { 
+         setIsProcessing(false); 
+       }
+    };
+    processAndDecrypt();
+  }, [rawTransactions, encryptionKey, isKeySet]);
 
   // --- Handlers ---
   const handleAddTransaction = () => {

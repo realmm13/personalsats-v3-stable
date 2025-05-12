@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
           data: {
             ...r,
             userId,
+            timestamp: r.date,
+            date: undefined,
           },
         })
       )

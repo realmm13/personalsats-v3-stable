@@ -175,7 +175,6 @@ export function TransactionImporter({
           const payloadForApi: BulkApiPayloadItem[] = [];
           for (const item of successfulImports) {
               if (!item.data || !encryptionKey) continue;
-              
               const sensitivePayload = {
                   type: item.data.type,
                   amount: item.data.amount,
@@ -185,17 +184,17 @@ export function TransactionImporter({
                   notes: item.data.notes,
                   counterparty: item.data.counterparty,
               };
-              
               const encryptedData = await encryptString(JSON.stringify(sensitivePayload), encryptionKey);
-              
               payloadForApi.push({
-                  timestamp: item.data.timestamp instanceof Date ? item.data.timestamp.toISOString() : new Date().toISOString(),
+                  id: item.data.id || crypto.randomUUID(),
+                  encryptedData,
+                  amount: item.data.amount ?? 0,
+                  date: item.data.timestamp instanceof Date ? item.data.timestamp.toISOString() : String(item.data.timestamp),
+                  price: item.data.price,
+                  fee: item.data.fee,
+                  wallet: item.data.wallet,
                   tags: item.data.tags ?? [],
-                  asset: item.data.asset ?? 'BTC',
-                  priceAsset: item.data.priceAsset ?? 'USD',
-                  feeAsset: item.data.feeAsset,
-                  exchangeTxId: item.data.exchangeTxId,
-                  encryptedData: encryptedData,
+                  notes: item.data.notes,
               });
           }
           
@@ -203,14 +202,7 @@ export function TransactionImporter({
 
           try {
             toast.info(`Sending ${payloadForApi.length} transactions to server...`);
-            const txArray = successfulImports.map(item => ({
-              ...item.data,
-              id: crypto.randomUUID(),
-              userId: '',
-              timestamp: item.data?.timestamp instanceof Date ? item.data.timestamp.toISOString() : new Date().toISOString(),
-            }));
-
-            const results = await submitTransactions(txArray);
+            const results = await submitTransactions(payloadForApi);
             console.log('Bulk import results:', results);
             const successCount = results.filter(r => r.status === 'ok').length;
             toast.success(`Successfully imported ${successCount} transactions.`);

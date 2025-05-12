@@ -58,7 +58,7 @@ export async function GET(request: Request) {
         tags: true,
         notes: true,
         exchangeTxId: true,
-        // Do NOT include encryptedData or any decryption
+        encryptedData: true,
       },
     });
 

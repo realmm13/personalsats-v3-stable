@@ -19,7 +19,9 @@ export default function PassphraseModal() {
     setIsLoading(true);
     setError('');
 
+    console.log('[PassphraseModal] Attempting unlock with passphrase:', input);
     const success = await unlock(input);
+    console.log('[PassphraseModal] unlock result:', success);
     if (!success) {
       setError('Incorrect passphrase. Please try again.');
       toast.error("Incorrect passphrase.");
