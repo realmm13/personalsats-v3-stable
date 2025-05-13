@@ -124,17 +124,22 @@ export default function TransactionsPage() {
          console.log('Starting decryption of', rawTransactions.length, 'transactions');
          const results = await Promise.all(
            rawTransactions.map(async (tx): Promise<ProcessedTransaction> => {
-             if (tx.encryptedData && encryptionKey) {
-               try {
-                 const decrypted = await import('@/lib/opensecret').then(m => m.decryptTx(tx.encryptedData as string, encryptionKey));
-                 return { ...tx, ...decrypted, timestamp: new Date(tx.timestamp), isDecrypted: true };
-               } catch (e) {
-                 console.error('Decryption failed for tx:', tx.id, e);
-                 return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: false };
-               }
-             } else { 
-               console.log('No encryptedData for tx:', tx.id);
-               return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: false }; 
+             if (!tx.encryptedData) {
+               console.warn('No encryptedData for tx:', tx.id);
+               return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: false };
+             }
+             console.group(`🔓 Decrypting tx ${tx.id}`);
+             console.log('Blob (first 64 chars):', String(tx.encryptedData).slice(0, 64));
+             console.log('Blob length (hex chars):', String(tx.encryptedData).length);
+             try {
+               const decrypted = await import('@/lib/opensecret').then(m => m.decryptTx(tx.encryptedData as string, encryptionKey));
+               console.log('Decrypted payload:', decrypted);
+               console.groupEnd();
+               return { ...tx, ...decrypted, timestamp: new Date(tx.timestamp), isDecrypted: true };
+             } catch (e) {
+               console.error('Decryption failed for tx:', tx.id, 'blob:', tx.encryptedData, e);
+               console.groupEnd();
+               return { ...tx, timestamp: new Date(tx.timestamp), isDecrypted: false };
              }
            })
          );

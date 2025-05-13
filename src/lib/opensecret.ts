@@ -1,4 +1,6 @@
 import type { Transaction } from '@/lib/types';
+import { useEncryption } from '@/context/EncryptionContext';
+import { generateEncryptionKey } from '@/lib/encryption';
 
 const IV_LENGTH = 12;
 
@@ -29,14 +31,49 @@ export async function encryptTx(tx: Transaction, encryptionKey: CryptoKey): Prom
 }
 
 export async function decryptTx(blob: string, encryptionKey: CryptoKey): Promise<Transaction> {
-  if (!encryptionKey) throw new Error('Encryption key not set');
-  const combined = fromHex(blob);
+  // strip version prefix if present
+  let dataStr = blob;
+  if (dataStr.startsWith('v1:')) dataStr = dataStr.slice(3);
+
+  // decode hex or Base64
+  let combined: Uint8Array;
+  if (/^[0-9a-fA-F]+$/.test(dataStr)) {
+    combined = fromHex(dataStr);
+  } else {
+    const bin = atob(dataStr);
+    combined = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) combined[i] = bin.charCodeAt(i);
+  }
+
   const iv = combined.slice(0, IV_LENGTH);
   const data = combined.slice(IV_LENGTH);
-  const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv },
-    encryptionKey,
-    data
-  );
-  return JSON.parse(new TextDecoder().decode(decrypted));
+
+  const key = encryptionKey;
+  let decrypted: ArrayBuffer;
+  try {
+    decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      data
+    );
+  } catch (err) {
+    console.error('[decryptTx] decryption error:', err);
+    throw err;
+  }
+  const text = new TextDecoder().decode(decrypted);
+  return JSON.parse(text);
+}
+
+// expose for manual testing in console
+declare global {
+  interface Window {
+    encryptTx: typeof encryptTx;
+    decryptTx: typeof decryptTx;
+    generateEncryptionKey: typeof generateEncryptionKey;
+  }
+}
+if (typeof window !== 'undefined') {
+  window.encryptTx = encryptTx;
+  window.decryptTx = decryptTx;
+  window.generateEncryptionKey = generateEncryptionKey;
 } 
