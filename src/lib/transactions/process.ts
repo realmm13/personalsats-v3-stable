@@ -292,42 +292,16 @@ export type BulkResult = {
 };
 
 /**
- * Processes a batch of newly imported transactions by fetching them, decrypting,
- * and applying the core Lot/Allocation logic.
- * 
+ * Processes a batch of newly imported transactions by applying the core Lot/Allocation logic.
+ *
  * @param userId The ID of the user owning these transactions.
  * @param txIds An array of IDs for the BitcoinTransaction records already created.
- * @param encryptionPhrase The user's encryption passphrase.
- * @param encryptionSalt The user's encryption salt.
  * @returns A Promise resolving to a BulkResult object.
  */
 export async function processBulkImportedTransactions(
   userId: string,
   txIds: string[],
-  encryptionPhrase: string,
-  encryptionSalt: string,
 ): Promise<BulkResult> {
-  if (!encryptionPhrase) {
-    return {
-      processed: 0,
-      errors: txIds.map(txId => ({ txId, message: "Encryption phrase missing" })),
-    };
-  }
-  if (!encryptionSalt) {
-    return {
-      processed: 0,
-      errors: txIds.map(txId => ({ txId, message: "Encryption salt missing" })),
-    };
-  }
-  function hexToBytes(hex: string): Uint8Array {
-    if (!hex) return new Uint8Array();
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < hex.length; i += 2) {
-      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
-    }
-    return bytes;
-  }
-  const salt = hexToBytes(encryptionSalt);
   const result: BulkResult = {
     processed: 0,
     errors: [],
@@ -344,12 +318,12 @@ export async function processBulkImportedTransactions(
         continue;
       }
 
-      const key = await generateEncryptionKey(encryptionPhrase, salt);
-      const decrypted = await decryptString(tx.encryptedData, key);
-      const parsed = transactionSchema.safeParse(JSON.parse(decrypted));
-      
-      if (!parsed.success) {
-        result.errors.push({ txId, message: `Invalid transaction data: ${parsed.error.message}` });
+      if (tx.type !== 'buy' && tx.type !== 'sell') {
+        // Only process buy/sell for lot/allocation logic
+        continue;
+      }
+      if (typeof tx.amount !== 'number' || typeof tx.price !== 'number' || tx.amount === null || tx.price === null) {
+        result.errors.push({ txId, message: 'Invalid amount or price for buy/sell transaction' });
         continue;
       }
 
@@ -364,11 +338,23 @@ export async function processBulkImportedTransactions(
         accountingMethod = user.accountingMethod as CostBasisMethod;
       }
 
+      // Use the clear fields from the DB row directly
+      const transactionData = {
+        type: tx.type as 'buy' | 'sell',
+        amount: tx.amount,
+        price: tx.price,
+        timestamp: tx.timestamp instanceof Date ? tx.timestamp.toISOString() : String(tx.timestamp),
+        fee: tx.fee ?? undefined,
+        wallet: tx.wallet ?? undefined,
+        tags: tx.tags ?? [],
+        notes: tx.notes ?? undefined,
+      };
+
       await _applyTransactionLogic(
         userId,
         txId,
         tx.timestamp,
-        parsed.data,
+        transactionData,
         accountingMethod
       );
 

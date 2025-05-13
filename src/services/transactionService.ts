@@ -12,23 +12,16 @@ export interface BulkImportResponse {
   errors: { id: string; message: string }[];
 }
 
-export async function submitTransactions(txs: TransactionPayload[]): Promise<BulkResult[]> {
-  // Send all rows in one request to the bulk API
-  const { inserted, errors = [] }: BulkImportResponse = await api.post(
+// Update: Return the full API response so the frontend can access imported/processed counts
+export async function submitTransactions(
+  txs: TransactionPayload[],
+  encryptionPhrase: string,
+  encryptionSalt: string
+): Promise<any> {
+  // Send all rows in one request to the bulk API, including encryption fields
+  const response = await api.post(
     '/api/transactions/bulk',
-    { rows: txs }
+    { rows: txs, encryptionPhrase, encryptionSalt }
   );
-
-  // Map successes and failures back to BulkResult[]
-  const successes: BulkResult[] = txs
-    .filter(tx => errors.every(e => e.id !== tx.id))
-    .map(tx => ({ id: tx.id, status: 'ok' as const }));
-
-  const failures: BulkResult[] = errors.map(e => ({
-    id: e.id,
-    status: 'error' as const,
-    message: e.message,
-  }));
-
-  return [...successes, ...failures];
+  return response;
 } 

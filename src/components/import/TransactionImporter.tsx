@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { processStrikeCsv } from '@/lib/importAdapters/strike';
 import { processRiverCsv } from '@/lib/importAdapters/river';
 import { encryptString } from "@/lib/encryption";
-import type { Transaction } from "@/lib/types";
+import type { Transaction, TransactionPayload } from "@/lib/types";
 import { useEncryption } from '@/context/EncryptionContext';
 import { submitTransactions } from '@/services/transactionService';
 
@@ -23,23 +23,25 @@ interface TransactionImporterProps {
 }
 
 interface ProcessedImport {
-  data?: Partial<Transaction>; 
+  data?: Partial<Transaction> | Partial<any>;
   error?: string;
   skipped?: boolean;
-  reason?: string; 
+  reason?: string;
   needsReview?: boolean;
-  needsPrice?: boolean; 
+  needsPrice?: boolean;
   sourceRow: Record<string, any>;
 }
 
 interface BulkApiPayloadItem {
-    timestamp: string;
-    tags?: string[];
-    asset: string;
-    priceAsset?: string;
-    feeAsset?: string;
-    exchangeTxId?: string | null;
-    encryptedData: string;
+  encryptedData: string;
+  type: 'buy' | 'sell';
+  amount: number;
+  price: number;
+  fee: number;
+  timestamp: string;
+  wallet: string;
+  tags: string[];
+  notes: string;
 }
 
 type SourceType = "strike" | "river" | "unknown";
@@ -65,7 +67,7 @@ export function TransactionImporter({
   const [skippedCount, setSkippedCount] = useState<number>(0);
   const [selectedSource, setSelectedSource] = useState<SourceType | "auto">("auto");
   const [autoDetectedSource, setAutoDetectedSource] = useState<SourceType>("unknown");
-  const { encryptionPhrase } = useEncryption();
+  const { encryptionPhrase, encryptionSalt } = useEncryption();
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -186,15 +188,15 @@ export function TransactionImporter({
               };
               const encryptedData = await encryptString(JSON.stringify(sensitivePayload), encryptionKey);
               payloadForApi.push({
-                  id: item.data.id || crypto.randomUUID(),
                   encryptedData,
+                  type: item.data.type as 'buy' | 'sell',
                   amount: item.data.amount ?? 0,
-                  date: item.data.timestamp instanceof Date ? item.data.timestamp.toISOString() : String(item.data.timestamp),
-                  price: item.data.price,
-                  fee: item.data.fee,
-                  wallet: item.data.wallet,
+                  price: item.data.price ?? 0,
+                  fee: typeof item.data.fee === 'number' ? item.data.fee : 0,
+                  timestamp: item.data.timestamp instanceof Date ? item.data.timestamp.toISOString() : String(item.data.timestamp),
+                  wallet: item.data.wallet || '',
                   tags: item.data.tags ?? [],
-                  notes: item.data.notes,
+                  notes: item.data.notes || '',
               });
           }
           
@@ -202,11 +204,14 @@ export function TransactionImporter({
 
           try {
             toast.info(`Sending ${payloadForApi.length} transactions to server...`);
-            const results = await submitTransactions(payloadForApi);
-            console.log('Bulk import results:', results);
-            const successCount = results.filter(r => r.status === 'ok').length;
-            toast.success(`Successfully imported ${successCount} transactions.`);
-            setImportedCount(successCount);
+            const apiResult = await submitTransactions(
+              payloadForApi as TransactionPayload[],
+              encryptionPhrase,
+              encryptionSalt
+            );
+            const processedCount = apiResult?.bulkResult?.processed ?? apiResult?.imported ?? 0;
+            toast.success(`Successfully imported ${processedCount} transactions.`);
+            setImportedCount(processedCount);
             onSuccess?.();
             setIsLoading(false);
             return;

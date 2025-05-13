@@ -85,53 +85,47 @@ export async function POST(req: Request) {
     const body = await req.json();
     console.log('POST /api/transactions payload:', body);
 
-    const {
-      encryptedData,
-      amount,
-      date,
-      price,
-      fee,
-      wallet,
-      tags,
-      notes,
-    } = body as {
-      encryptedData?: string;
-      amount?: number;
-      date?: string;
-      price?: number;
-      fee?: number;
-      wallet?: string;
-      tags?: string[];
-      notes?: string;
-    };
+    // Expecting encryptedData and all clear fields
+    const { encryptedData, type, amount, price, fee, timestamp, wallet, tags, notes } = body;
 
     if (
       typeof encryptedData !== 'string' ||
+      typeof type !== 'string' ||
       typeof amount !== 'number' ||
-      typeof date !== 'string'
+      typeof price !== 'number' ||
+      typeof fee !== 'number' ||
+      typeof timestamp !== 'string' ||
+      typeof wallet !== 'string' ||
+      !Array.isArray(tags) ||
+      typeof notes !== 'string'
     ) {
-      console.error('Invalid payload fields:', { encryptedData, amount, date });
+      console.error('Invalid payload fields:', body);
       return NextResponse.json(
         { error: 'Invalid payload' },
         { status: 400 }
       );
     }
 
-    const tx = await db.bitcoinTransaction.create({
+    // Store both encryptedData and clear fields
+    const record = await db.bitcoinTransaction.create({
       data: {
-        userId: session.user.id,
         encryptedData,
+        type,
         amount,
-        timestamp: new Date(date),
         price,
         fee,
+        timestamp: new Date(timestamp),
         wallet,
-        tags: tags || [],
+        tags,
         notes,
+        userId: session.user.id,
       },
     });
 
-    return NextResponse.json(tx);
+    // Run processTransaction logic on the clear fields (if needed)
+    // (If your processTransaction expects the clear fields, call it here)
+
+    return NextResponse.json(record);
   } catch (err: any) {
     console.error('Error in POST /api/transactions:', err);
     return NextResponse.json(

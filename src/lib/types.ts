@@ -64,15 +64,19 @@ export interface PortfolioSnapshot {
 }
 
 export interface TransactionPayload {
-  id: string;
   encryptedData: string;
+  type: 'buy' | 'sell';
   amount: number;
-  date: string;
-  price?: number;
-  fee?: number;
-  wallet?: string;
-  tags?: string[];
-  notes?: string;
+  price: number;
+  fee: number;
+  timestamp: string;
+  wallet: string;
+  tags: string[];
+  notes: string;
+}
+
+export interface BulkImportPayload {
+  rows: TransactionPayload[];
 }
 
 export interface BulkResult {
