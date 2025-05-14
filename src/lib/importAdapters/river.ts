@@ -30,6 +30,7 @@ export interface ParsedTransaction {
   feeAsset?: string;
   wallet?: string;
   notes?: string;
+  tags?: string[];
 }
 
 // Type definition for the structure returned by this adapter
@@ -62,10 +63,18 @@ export function processRiverCsv(rows: Record<string, unknown>[]): ProcessedImpor
 
   for (const row of rows) {
     try { // Wrap row processing in try/catch for individual errors
-      const rawDate = row.Date as string;
-      const timestamp = new Date(rawDate);
+      let rawDate = row.Date as string;
+      let timestamp: Date | null = null;
+      if (!rawDate) {
+        throw new Error("Missing date");
+      }
+      // If the date is in 'YYYY-MM-DD HH:mm:ss' (no T, no Z), treat as UTC
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(rawDate)) {
+        rawDate = rawDate.replace(' ', 'T') + 'Z';
+      }
+      timestamp = new Date(rawDate);
       if (isNaN(timestamp.getTime())) {
-         throw new Error("Invalid date format");
+        throw new Error("Invalid date format");
       }
 
       // Use Number() for parsing, default NaN to 0 for checks
@@ -75,7 +84,8 @@ export function processRiverCsv(rows: Record<string, unknown>[]): ProcessedImpor
       const recvCurrency = String(row['Received Currency'] ?? '');
       const feeAmt = Number(row['Fee Amount'] ?? 0);
       const feeCurrency = String(row['Fee Currency'] ?? '');
-      const tag = String(row.Tag ?? '').trim(); // Trim tag
+      const tag = String(row['Tag'] ?? '').trim();
+      console.log('[River Adapter] Row Tag:', tag, row);
 
       // Validate required amounts (at least one amount should be non-zero usually)
       // if (isNaN(sentAmt) || isNaN(recvAmt) || isNaN(feeAmt)) {
@@ -113,15 +123,18 @@ export function processRiverCsv(rows: Record<string, unknown>[]): ProcessedImpor
           if (recvAmt <= 0 || !recvCurrency) {
               throw new Error("Invalid data for Interest tag");
           }
-          transactionData = { 
+          // Do NOT look up price here; let server handle it
+          transactionData = {
             timestamp, type: 'deposit', // Treat Interest as deposit
-            amount: recvAmt, asset: recvCurrency, 
-            notes: 'Interest payment', 
-            wallet: 'River', 
-            // Price/Fee likely not applicable for interest
+            amount: recvAmt, asset: recvCurrency,
+            notes: 'Interest payment',
+            wallet: 'River',
             price: undefined, priceAsset: undefined,
-            fee: undefined, feeAsset: undefined 
+            fee: undefined, feeAsset: undefined,
+            tags: ['Interest']
           };
+          results.push({ sourceRow: row, data: transactionData });
+          continue;
       } else {
           // Handle potential Deposits/Withdrawals based on amount columns if tag is unknown/empty
           if (recvAmt > 0 && sentAmt === 0) { // DEPOSIT pattern
@@ -150,9 +163,17 @@ export function processRiverCsv(rows: Record<string, unknown>[]): ProcessedImpor
           }
       }
       
+      let tags: string[] = [];
+      if (tag === 'Interest') {
+        tags = ['Interest'];
+      } else if (tag) {
+        tags = [tag];
+      }
+
       // Add successful transaction or skipped row to results
       if (transactionData) {
-      results.push({ sourceRow: row, data: transactionData });
+        transactionData.tags = tags;
+        results.push({ sourceRow: row, data: transactionData });
       } else {
           results.push({ sourceRow: row, skipped: true, reason: skipReason ?? "Row did not match known patterns" });
       }
