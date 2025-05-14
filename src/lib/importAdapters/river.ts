@@ -22,7 +22,7 @@ export interface ParsedTransaction {
   date: Date;
   description?: string;
   timestamp?: Date;
-  type?: 'buy' | 'sell' | 'deposit' | 'withdrawal';
+  type?: 'buy' | 'sell' | 'deposit' | 'withdrawal' | 'interest';
   asset?: string;
   price?: number;
   priceAsset?: string;
@@ -30,6 +30,7 @@ export interface ParsedTransaction {
   feeAsset?: string;
   wallet?: string;
   notes?: string;
+  exchangeTxId?: string;
   tags?: string[];
 }
 
@@ -120,21 +121,33 @@ export function processRiverCsv(rows: Record<string, unknown>[]): ProcessedImpor
             wallet: 'River' 
           };
       } else if (tag === 'Interest') {
-          if (recvAmt <= 0 || !recvCurrency) {
-              throw new Error("Invalid data for Interest tag");
-          }
-          // Do NOT look up price here; let server handle it
-          transactionData = {
-            timestamp, type: 'deposit', // Treat Interest as deposit
-            amount: recvAmt, asset: recvCurrency,
-            notes: 'Interest payment',
-            wallet: 'River',
-            price: undefined, priceAsset: undefined,
-            fee: undefined, feeAsset: undefined,
-            tags: ['Interest']
-          };
-          results.push({ sourceRow: row, data: transactionData });
-          continue;
+        if (recvAmt <= 0 || !recvCurrency) {
+          throw new Error("Invalid data for Interest tag");
+        }
+        transactionData = {
+          timestamp, type: 'interest', // Use new type for interest
+          amount: recvAmt, asset: recvCurrency,
+          notes: 'Interest payment',
+          wallet: 'River',
+          price: undefined, priceAsset: undefined,
+          fee: undefined, feeAsset: undefined,
+          tags: ['Interest']
+        };
+        results.push({ sourceRow: row, data: transactionData });
+        continue;
+      } else if (recvAmt > 0 && sentAmt === 0 && recvCurrency === 'BTC') {
+        // BTC deposit from cold storage/other exchange
+        transactionData = {
+          timestamp, type: 'deposit',
+          amount: recvAmt, asset: recvCurrency,
+          wallet: 'River',
+          notes: 'Deposit (River)',
+          price: undefined, priceAsset: undefined,
+          fee: feeAmt > 0 ? feeAmt : undefined, feeAsset: feeAmt > 0 ? feeCurrency : undefined,
+          tags: []
+        };
+        results.push({ sourceRow: row, data: transactionData });
+        continue;
       } else {
           // Handle potential Deposits/Withdrawals based on amount columns if tag is unknown/empty
           if (recvAmt > 0 && sentAmt === 0) { // DEPOSIT pattern

@@ -1,12 +1,11 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { generateTaxReport } from "@/lib/tax/report";
-import { CostBasisMethod } from "@/lib/cost-basis"; // Type alias: 'FIFO' | 'LIFO' | 'HIFO'
+import { CostBasisMethod } from "@/lib/cost-basis"; // Only 'HIFO'
 import { getBitcoinPrice } from "@/lib/price"; // Import price fetching utility
 
 // Helper function to simulate fetching current price (replace with actual implementation)
 async function getCurrentBtcPrice(): Promise<number> {
-  console.log("Fetching current BTC price (using placeholder)...");
   // Replace with actual API call or price service
   await new Promise(resolve => setTimeout(resolve, 50)); // Simulate async fetch
   return 60000; // Placeholder value
@@ -41,7 +40,7 @@ export const taxRouter = createTRPCRouter({
       }
       
       // Pass year, method, and the determined currentPrice to the service
-      const report = await generateTaxReport(userId, input.year, input.method, priceToUse);
+      const report = await generateTaxReport(userId, input.year, priceToUse);
       
       return report;
     }),

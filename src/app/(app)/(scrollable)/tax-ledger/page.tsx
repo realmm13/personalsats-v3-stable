@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/trpc/react';
-import { CostBasisMethod } from '@/lib/cost-basis';
 import { useEncryption } from '@/context/EncryptionContext';
 import { Spinner } from '@/components/Spinner';
 import { Card } from '@/components/ui/card';
@@ -14,6 +13,8 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table';
+import { CostBasisMethod } from '@/lib/cost-basis';
+import { Badge } from '@/components/ui/badge';
 
 interface TaxLedgerRow {
   acquired: Date;
@@ -27,8 +28,7 @@ interface TaxLedgerRow {
 
 export default function TaxLedgerPage() {
   const [year, setYear] = useState<number>(new Date().getFullYear());
-  const [method, setMethod] = useState<CostBasisMethod>(CostBasisMethod.FIFO);
-  const { data, isLoading } = api.transactions.getTaxLedger.useQuery({ year, method });
+  const { data, isLoading } = api.transactions.getTaxLedger.useQuery({ year });
   const { encryptionKey, isLoadingKey } = useEncryption();
   const [rows, setRows] = useState<TaxLedgerRow[] | null>(null);
 
@@ -47,13 +47,51 @@ export default function TaxLedgerPage() {
     );
   }
 
+  // Format USD utility (reuse from dashboard if available)
+  const formatUSD = (n: number) => n?.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+
+  // Sum up the gain column from the table rows
+  const realizedGain = Array.isArray(rows) ? rows.reduce((sum, r) => sum + (typeof r.gain === 'number' ? r.gain : 0), 0) : 0;
+
+  // Defensive: fallback values if data is missing or doesn't have the required properties
+  const stGain = (data && 'realizedGainST' in data) ? Number(data.realizedGainST) : 0;
+  const ltGain = (data && 'realizedGainLT' in data) ? Number(data.realizedGainLT) : 0;
+
+  // Calculate percentage gain/loss for realized gain
+  const totalCostBasis = Array.isArray(rows) ? rows.reduce((sum, r) => sum + (typeof r.costBasis === 'number' ? r.costBasis : 0), 0) : 0;
+  const realizedPercent = totalCostBasis > 0 ? (realizedGain / totalCostBasis) * 100 : 0;
+  const percentLabel = `${realizedPercent >= 0 ? '+' : ''}${realizedPercent.toFixed(1)}%`;
+
   return (
     <div className="vertical space-y-8 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Tax Ledger</h1>
-          <p className="text-muted-foreground">View your realized gains and losses</p>
         </div>
+      </div>
+      {/* Summary Boxes - moved here to be directly under the title/subtitle */}
+      <div className="grid gap-4 md:grid-cols-3 mt-2">
+        <Card className="p-6">
+          <div className="flex flex-col space-y-1">
+            <span className="text-muted-foreground text-sm font-medium">Realized Gain/Loss</span>
+            <span className="flex items-center gap-2">
+              <span className="text-2xl font-bold text-white">{formatUSD(realizedGain)}</span>
+              <Badge variant="default" color={realizedPercent >= 0 ? 'green' : 'red'}>{percentLabel}</Badge>
+            </span>
+          </div>
+        </Card>
+        <Card className="p-6">
+          <div className="flex flex-col space-y-1">
+            <span className="text-muted-foreground text-sm font-medium">Short-term Realized Gains ($)</span>
+            <span className="text-2xl font-bold text-white">{formatUSD(Number(stGain))}</span>
+          </div>
+        </Card>
+        <Card className="p-6">
+          <div className="flex flex-col space-y-1">
+            <span className="text-muted-foreground text-sm font-medium">Long-term Realized Gains ($)</span>
+            <span className="text-2xl font-bold text-white">{formatUSD(Number(ltGain))}</span>
+          </div>
+        </Card>
       </div>
       <div className="flex gap-4">
         <select
@@ -65,15 +103,7 @@ export default function TaxLedgerPage() {
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
-        <select
-          value={method}
-          onChange={e => setMethod(e.target.value as CostBasisMethod)}
-          className="px-3 py-2 border rounded-md"
-        >
-          {(Object.values(CostBasisMethod) as string[]).map(m => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
+        <span className="px-3 py-2 border rounded-md bg-muted">HIFO</span>
       </div>
       <Card className="p-0">
         <Table>

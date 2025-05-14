@@ -8,6 +8,7 @@ import {
 import { selectLotsForSale, CostBasisMethod, type AvailableLot, type SelectedLot, type SaleResult } from "@/lib/cost-basis";
 import type { Lot, User, BitcoinTransaction } from "@prisma/client";
 import { Prisma } from "@prisma/client";
+import { getDailyBtcUsdPrice } from '../price';
 
 // Custom error for request-related issues (validation, etc.)
 export class BadRequestError extends Error {
@@ -80,7 +81,7 @@ async function _applyTransactionLogic(
             openedAt: txTimestamp,
             originalAmount: transactionData.amount,
             remainingQty: transactionData.amount,
-            costBasisUsd: transactionData.amount * transactionData.price,
+            costBasisUsd: (transactionData.amount * transactionData.price) + (transactionData.fee ?? 0),
           },
         });
         console.log(`Logic: Created Lot for BUY transaction ${txId}`);
@@ -183,6 +184,43 @@ async function _applyTransactionLogic(
            throw new DatabaseError(`Database update failed during allocation creation/update for tx ${txId}`);
       }
   }
+  // 9. Handle INTEREST/DEPOSIT logic: Create a new Lot for interest payments
+  else if (
+    transactionData.type === "deposit" &&
+    transactionData.amount &&
+    transactionData.asset === 'BTC' &&
+    transactionData.notes?.toLowerCase().includes('interest')
+  ) {
+    // Idempotency check: Check if Lot already exists for this transaction ID
+    const existingLot = await db.lot.findFirst({ where: { txId: txId } });
+    if (!existingLot) {
+      let price = transactionData.price;
+      if (typeof price !== 'number' || !price) {
+        price = await getDailyBtcUsdPrice(txTimestamp) ?? undefined;
+      }
+      if (typeof price !== 'number' || !price) {
+        console.warn(`Interest transaction ${txId} missing price, skipping lot creation.`);
+        return; // Or flag for review if needed
+      }
+      try {
+        await db.lot.create({
+          data: {
+            txId: txId,
+            openedAt: txTimestamp,
+            originalAmount: transactionData.amount,
+            remainingQty: transactionData.amount,
+            costBasisUsd: transactionData.amount * price,
+          },
+        });
+        console.log(`Logic: Created Lot for INTEREST transaction ${txId}`);
+      } catch (error) {
+        console.error(`Logic: Failed to create Lot for INTEREST transaction ${txId}:`, error);
+        throw new DatabaseError(`Failed to create corresponding Lot for interest tx ${txId}`);
+      }
+    } else {
+      console.log(`Logic: Lot already exists for INTEREST transaction ${txId}, skipping creation.`);
+    }
+  }
 }
 // --- End Refactored Logic ---
 
@@ -206,7 +244,7 @@ export async function processTransaction(
   const userId = session.user.id;
   const passphrase = session.user.encryptionPhrase;
   const saltHex = session.user.encryptionSalt;
-  const accountingMethod = session.user.accountingMethod ?? CostBasisMethod.FIFO;
+  const accountingMethod = session.user.accountingMethod ?? CostBasisMethod.HIFO;
 
   // Convert hex salt to Uint8Array
   function hexToBytes(hex: string): Uint8Array {
@@ -327,16 +365,8 @@ export async function processBulkImportedTransactions(
         continue;
       }
 
-      const user = await db.user.findUnique({
-        where: { id: userId },
-        select: { accountingMethod: true },
-      });
-
-      // Ensure accountingMethod is a valid CostBasisMethod
-      let accountingMethod: CostBasisMethod = CostBasisMethod.FIFO;
-      if (user?.accountingMethod && Object.values(CostBasisMethod).includes(user.accountingMethod as CostBasisMethod)) {
-        accountingMethod = user.accountingMethod as CostBasisMethod;
-      }
+      // Always use HIFO
+      const accountingMethod: CostBasisMethod = CostBasisMethod.HIFO;
 
       // Use the clear fields from the DB row directly
       const transactionData = {

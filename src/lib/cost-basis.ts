@@ -1,6 +1,4 @@
 export enum CostBasisMethod {
-  FIFO = 'FIFO',
-  LIFO = 'LIFO',
   HIFO = 'HIFO',
 }
 
@@ -41,13 +39,8 @@ export function selectLotsForSale(
   saleDateMs: number
 ): SaleResult {
   const lots = [...availableLots];
-  if (method === CostBasisMethod.FIFO) {
-    lots.sort((a, b) => a.date - b.date);
-  } else if (method === CostBasisMethod.LIFO) {
-    lots.sort((a, b) => b.date - a.date);
-  } else if (method === CostBasisMethod.HIFO) {
-    lots.sort((a, b) => b.price - a.price);
-  }
+  // Always use HIFO
+  lots.sort((a, b) => b.price - a.price);
 
   let remainingToSell = saleAmount;
   const selectedLots: SelectedLot[] = [];

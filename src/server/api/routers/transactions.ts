@@ -102,7 +102,6 @@ export const transactionsRouter = createTRPCRouter({
     .input(
       z.object({
         year: z.number().optional(),           // allow filtering by tax year
-        method: z.nativeEnum(CostBasisMethod)  // FIFO/LIFO/HIFO
       })
     )
     .query(async ({ ctx, input }) => {

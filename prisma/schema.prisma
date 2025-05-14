@@ -213,3 +213,8 @@ model DailySnapshot {
 
   @@id([userId, date]) 
 }
+
+model DailyPrice {
+  date  DateTime @id
+  price Float
+}

@@ -1,10 +1,10 @@
-export type TransactionType = 'buy' | 'sell';
+export type TransactionType = 'buy' | 'sell' | 'deposit' | 'withdrawal' | 'interest';
 
 export interface Transaction {
   id: string;
   userId: string;
   timestamp: string | Date;
-  type?: 'buy' | 'sell' | null;
+  type?: TransactionType | null;
   amount?: number | null;
   asset?: string;
   price?: number | null;
@@ -65,7 +65,7 @@ export interface PortfolioSnapshot {
 
 export interface TransactionPayload {
   encryptedData: string;
-  type: 'buy' | 'sell';
+  type: TransactionType;
   amount: number;
   price: number;
   fee: number;

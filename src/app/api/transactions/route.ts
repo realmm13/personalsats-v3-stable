@@ -20,7 +20,7 @@ const wrapperSchema = z.object({
 
 // Schema for validating URL query parameters (optional)
 const filterSchema = z.object({
-  type: z.enum(["buy", "sell", "deposit", "withdrawal"]).optional(), // Adjust enum as needed
+  type: z.enum(["buy", "sell", "deposit", "withdrawal", "interest"]).optional(), // Adjust enum as needed
   minValue: z.string().refine((val) => !isNaN(parseFloat(val)), { message: "minValue must be a number" }).optional(),
   maxValue: z.string().refine((val) => !isNaN(parseFloat(val)), { message: "maxValue must be a number" }).optional(),
   // Add other potential filters like wallet, tag, dateFrom, dateTo

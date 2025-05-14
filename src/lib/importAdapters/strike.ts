@@ -31,7 +31,7 @@ export interface ParsedTransaction {
   date?: Date;
   description?: string;
   timestamp?: Date;
-  type?: 'buy' | 'sell' | 'deposit' | 'withdrawal';
+  type?: 'buy' | 'sell' | 'deposit' | 'withdrawal' | 'interest';
   asset?: string;
   price?: number;
   priceAsset?: string;

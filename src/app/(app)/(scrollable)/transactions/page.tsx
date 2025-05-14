@@ -73,7 +73,7 @@ export default function TransactionsPage() {
   const clearAllMutation = api.transactions.clearAll.useMutation();
 
   // --- State ---
-  const [typeFilter, setTypeFilter] = useState<"all" | "buy" | "sell" | "deposit" | "withdrawal">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "buy" | "sell" | "deposit" | "withdrawal" | "interest">("all");
   const [minAmount, setMinAmount] = useState<string>(""); 
   const [minAmountInput, setMinAmountInput] = useState<string>("");
   const [maxAmount, setMaxAmount] = useState<string>(""); 
@@ -277,6 +277,7 @@ export default function TransactionsPage() {
                         <SelectItem value="sell">Sell</SelectItem>
                         <SelectItem value="deposit">Deposit</SelectItem>
                         <SelectItem value="withdrawal">Withdrawal</SelectItem>
+                        <SelectItem value="interest">Interest</SelectItem>
                     </SelectContent>
                  </Select>
                  <Input type="number" placeholder="Min Amount (BTC)" value={minAmountInput} onChange={(e) => setMinAmountInput(e.target.value)} className="w-auto min-w-[140px] h-9 text-sm" step="any" min="0" />
@@ -369,6 +370,7 @@ export default function TransactionsPage() {
                 <SelectItem value="sell">Sell</SelectItem>
                 <SelectItem value="deposit">Deposit</SelectItem>
                 <SelectItem value="withdrawal">Withdrawal</SelectItem>
+                <SelectItem value="interest">Interest</SelectItem>
             </SelectContent>
         </Select>
         <Input type="number" placeholder="Min Amount (BTC)" value={minAmountInput} onChange={(e) => setMinAmountInput(e.target.value)} className="w-auto min-w-[140px] h-9 text-sm" step="any" min="0" />

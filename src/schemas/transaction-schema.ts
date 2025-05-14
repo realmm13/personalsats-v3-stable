@@ -3,7 +3,7 @@ import { z } from "zod";
 
 // Schema for the plaintext transaction data
 export const transactionSchema = z.object({
-  type: z.enum(["buy", "sell"]),
+  type: z.enum(["buy", "sell", "deposit", "withdrawal", "interest"]),
   amount: z.coerce.number().positive("Amount must be positive"), // Use coerce for form data
   price: z.coerce.number().gte(0, "Price must be non-negative"), // Use coerce for form data
   fee: z.coerce.number().gte(0, "Fee must be non-negative").optional(), // Optional, use coerce

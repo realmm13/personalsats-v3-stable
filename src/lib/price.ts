@@ -1,4 +1,6 @@
 import { clientEnv } from '@/env/client';
+import { db } from './db';
+import { startOfDay } from 'date-fns';
 
 interface PriceCache {
   price: number;
@@ -154,4 +156,28 @@ export function formatUSD(value: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
+}
+
+/**
+ * Looks up the BTC/USD price for a given date from the DailyPrice table.
+ * If the exact date is not found, returns the price from the nearest prior date.
+ * @param date JS Date object (UTC)
+ * @returns price as number, or null if not found
+ */
+export async function getDailyBtcUsdPrice(date: Date): Promise<number | null> {
+  // Normalize to start of day UTC
+  const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  console.log('[getDailyBtcUsdPrice] Input:', date.toISOString(), 'Lookup day:', day.toISOString());
+  // Query for the nearest price on or before the given date
+  const priceRow = await db.dailyPrice.findFirst({
+    where: {
+      date: {
+        lte: day,
+      },
+    },
+    orderBy: {
+      date: 'desc',
+    },
+  });
+  return priceRow ? priceRow.price : null;
 } 

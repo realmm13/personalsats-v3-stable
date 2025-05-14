@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { differenceInDays } from 'date-fns';
 import type { Lot, Allocation, BitcoinTransaction } from "@prisma/client";
-import { type CostBasisMethod, selectLotsForSale, type SaleResult, type AvailableLot } from "@/lib/cost-basis"; // Import necessary types
+import { CostBasisMethod, selectLotsForSale, type SaleResult, type AvailableLot } from "@/lib/cost-basis"; // Only HIFO
 
 // Define the structure for the dynamically generated report
 export interface TaxReport {
@@ -37,14 +37,12 @@ export interface TaxReport {
  * 
  * @param userId The ID of the user.
  * @param year The tax year for the report.
- * @param method The cost basis accounting method (FIFO, LIFO, HIFO).
  * @param currentPrice The current price of the asset (e.g., BTC) in USD for unrealized gain calculation.
  * @returns A promise that resolves to the TaxReport object.
  */
 export async function generateTaxReport(
   userId: string, 
   year: number, 
-  method: CostBasisMethod, 
   currentPrice: number
 ): Promise<TaxReport> {
 
@@ -65,7 +63,7 @@ export async function generateTaxReport(
   // Initialize report structure
   const report: TaxReport = {
     year: year,
-    method: method,
+    method: CostBasisMethod.HIFO,
     totalRealizedGain: 0,
     realizedGainST: 0,
     realizedGainLT: 0,
@@ -100,7 +98,7 @@ export async function generateTaxReport(
          saleResult = selectLotsForSale(
             lotsForSale, 
             saleAmount,
-            method,
+            CostBasisMethod.HIFO,
             salePrice,
             saleDateMs
          );

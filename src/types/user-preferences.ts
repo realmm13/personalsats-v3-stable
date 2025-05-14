@@ -29,7 +29,7 @@ export const userPreferencesSchema = z.object({
 
   // New cost basis method preference
   costBasisMethod: z
-    .enum([CostBasisMethod.FIFO, CostBasisMethod.LIFO, CostBasisMethod.HIFO])
+    .enum([CostBasisMethod.HIFO])
     .default(CostBasisMethod.HIFO)
     .describe("Default cost basis method for tax calculations"),
 });

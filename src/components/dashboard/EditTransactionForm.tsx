@@ -17,7 +17,7 @@ import { authClient } from "@/server/auth/client";
 
 // Enforce all fields are present for editing, fee is optional but defaults
 const editTransactionSchema = z.object({
-  type: z.enum(["buy", "sell"]),
+  type: z.enum(["buy", "sell", "deposit", "withdrawal", "interest"]),
   timestamp: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid date format" }),
   amount: z.coerce.number().positive("Amount must be positive"),
   price: z.coerce.number().positive("Price must be positive"),
