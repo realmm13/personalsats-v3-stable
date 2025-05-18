@@ -43,7 +43,7 @@ export function ResponsiveSelectBottomDrawerMenu({
 
     const lowercaseQuery = searchQuery.toLowerCase();
     return options.filter((option) => {
-      const label = (option.label || option.value).toLowerCase();
+      const label = (option.label ?? option.value).toLowerCase();
       return label.includes(lowercaseQuery);
     });
   }, [options, searchQuery]);
@@ -80,7 +80,7 @@ export function ResponsiveSelectBottomDrawerMenu({
                 }}
                 className={value === option.value ? "bg-muted" : ""}
               >
-                {option.label || option.value}
+                {option.label ?? option.value}
               </BottomDrawerMenuItem>
             ))
           )}
