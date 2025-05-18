@@ -45,18 +45,25 @@ export function PortfolioChart({ data }: PortfolioChartProps) {
           <XAxis 
              dataKey="date" 
              tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }}
-             tickFormatter={(value) => { // Basic date formatting, adjust as needed
+             tickFormatter={(value) => {
                  if (value instanceof Date) return value.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                  if (typeof value === 'string') {
-                     try { return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch (e) { return value; }
+                     try { return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return value; }
                  }
-                 return value;
+                 return String(value);
              }}
              // Consider adding interval='preserveStartEnd' or interval={...} if axis gets crowded
            />
           <YAxis 
              tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }}
-             tickFormatter={(value) => `$${value.toLocaleString()}`}
+             tickFormatter={(value: number | string) => {
+               if (typeof value === 'number') return `$${value.toLocaleString()}`;
+               if (typeof value === 'string') {
+                 const num = Number(value);
+                 return isNaN(num) ? value : `$${num.toLocaleString()}`;
+               }
+               return String(value);
+             }}
            />
            {/* Use theme colors for Tooltip */}
            <Tooltip
@@ -67,7 +74,14 @@ export function PortfolioChart({ data }: PortfolioChartProps) {
                  borderRadius: "var(--radius)",
               }}
              itemStyle={{ color: "hsl(var(--foreground))" }}
-             formatter={(value: number) => `$${value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
+             formatter={(value: number | string) => {
+               if (typeof value === 'number') return `$${value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+               if (typeof value === 'string') {
+                 const num = Number(value);
+                 return isNaN(num) ? value : `$${num.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+               }
+               return String(value);
+             }}
            />
            {/* Use theme text color for Legend */}
            <Legend 
