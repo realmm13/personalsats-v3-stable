@@ -21,8 +21,12 @@ export function PassphrasePrompt({}: PassphrasePromptProps) {
     setLocalError(null);
 
     try {
-      const potentialKey = await generateEncryptionKey(passphrase);
-      setEncryptionKey(potentialKey);
+      const potentialKey = await (typeof generateEncryptionKey === 'function' ? generateEncryptionKey(passphrase) : Promise.reject('generateEncryptionKey is not a function'));
+      if (potentialKey instanceof CryptoKey || potentialKey === null) {
+        setEncryptionKey(potentialKey);
+      } else {
+        throw new Error('Invalid key generated');
+      }
     } catch (error: unknown) {
       console.error("Error generating key:", error);
       const errorMsg = error instanceof Error ? error.message : "Failed to process passphrase.";
