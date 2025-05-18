@@ -7,7 +7,7 @@ import { CustomButton } from "@/components/CustomButton";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-interface PassphrasePromptProps {}
+type PassphrasePromptProps = Record<string, never>;
 
 export function PassphrasePrompt({}: PassphrasePromptProps) {
   const { setEncryptionKey, isLoadingKey, keyError } = useEncryption();
