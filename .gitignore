@@ -38,3 +38,6 @@ pnpm-debug.log*
 
 # Lockfiles
 package-lock.json
+LICSESNE.md
+*.dump
+out.prisma

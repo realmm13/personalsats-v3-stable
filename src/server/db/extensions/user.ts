@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma";
+import { Prisma } from "@prisma/client";
 import { displayUserNameAndUsername } from "@/server/db/utils";
 
 export const userExtension = Prisma.defineExtension({

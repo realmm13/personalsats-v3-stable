@@ -20,5 +20,3 @@ const prisma = globalForPrisma.prisma ?? getExtendedClient(); // Use the functio
 if (IS_DEV) globalForPrisma.prisma = prisma;
 
 export const db = prisma;
-
-export * from "@/generated/prisma";
