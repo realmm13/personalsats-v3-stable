@@ -10,7 +10,7 @@ export function RootErrorFallback({
   return (
     <div role="alert" className="p-4">
       <p>Something went wrong:</p>
-      <pre style={{ color: "red" }}>{error.message}</pre>
+      <pre style={{ color: "red" }}>{typeof error === 'object' && error && 'message' in error ? (error as { message: string }).message : String(error)}</pre>
       <button onClick={resetErrorBoundary}>Try again</button>
     </div>
   );
