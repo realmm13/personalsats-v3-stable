@@ -7,11 +7,9 @@ import { CustomButton } from "@/components/CustomButton";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-interface PassphrasePromptProps {
-  sampleEncryptedData?: string | null;
-}
+interface PassphrasePromptProps {}
 
-export function PassphrasePrompt({ sampleEncryptedData }: PassphrasePromptProps) {
+export function PassphrasePrompt({}: PassphrasePromptProps) {
   const { setEncryptionKey, isLoadingKey, keyError } = useEncryption();
   const [passphrase, setPassphrase] = useState("");
   const [isTestingKey, setIsTestingKey] = useState(false);
@@ -24,11 +22,8 @@ export function PassphrasePrompt({ sampleEncryptedData }: PassphrasePromptProps)
 
     try {
       const potentialKey = await generateEncryptionKey(passphrase);
-
-      console.log("Skipping test decryption, setting key directly...");
       setEncryptionKey(potentialKey);
-
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error generating key:", error);
       const errorMsg = error instanceof Error ? error.message : "Failed to process passphrase.";
       toast.error(`Key generation failed: ${errorMsg}`);
@@ -39,7 +34,7 @@ export function PassphrasePrompt({ sampleEncryptedData }: PassphrasePromptProps)
   };
 
   const currentLoading = isLoadingKey || isTestingKey;
-  const currentError = localError || keyError;
+  const currentError = localError ?? keyError;
 
   return (
     <div className="flex flex-col space-y-4 max-w-md mx-auto mt-10 p-6 border rounded-lg bg-card text-card-foreground shadow-md">
