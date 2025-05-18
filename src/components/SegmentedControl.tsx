@@ -14,8 +14,8 @@ export type SegmentedControlOption = {
   label: string;
   leftIcon?: LucideIcon; // Assuming Lucide icons
   rightIcon?: LucideIcon; // Assuming Lucide icons
-  leftSide?: React.ComponentType<any>;
-  rightSide?: React.ComponentType<any>;
+  leftSide?: React.ComponentType<unknown>;
+  rightSide?: React.ComponentType<unknown>;
   disabled?: boolean;
 };
 
